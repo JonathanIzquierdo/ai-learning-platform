@@ -9,12 +9,13 @@ import { useProgress } from './hooks/useProgress'
 import { module00 } from './modules/00-ai-fundamentals/index'
 import { module01 } from './modules/01-token-awareness/index'
 import { module02 } from './modules/02-evals-harness/index'
+import { module03 } from './modules/03-ai-maturity/index'
 
-const ALL_MODULES = [module00, module01, module02]
+const ALL_MODULES = [module00, module01, module02, module03]
 
 export default function App() {
   const { t } = useTranslation()
-  const { getModuleProgress, setModuleSlide, completeModule } = useProgress()
+  const { getModuleProgress, completeModule } = useProgress()
   const [activeModule, setActiveModule] = useState(null)
 
   if (activeModule) {
