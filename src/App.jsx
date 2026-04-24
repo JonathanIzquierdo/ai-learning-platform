@@ -34,7 +34,7 @@ export default function App() {
 
   return (
     <div className="min-h-screen bg-slate-900 px-4 py-8">
-      <nav className="max-w-3xl mx-auto flex items-center justify-between mb-12">
+      <nav className="max-w-5xl mx-auto flex items-center justify-between mb-12">
         <div className="flex items-center gap-3">
           <img src={VISMA_LOGO} alt="Visma" className="h-7 w-auto" />
           <span className="text-xs font-bold text-slate-500 tracking-widest uppercase">LATAM</span>
@@ -42,7 +42,7 @@ export default function App() {
         <LanguageSwitcher />
       </nav>
 
-      <div className="max-w-3xl mx-auto mb-12">
+      <div className="max-w-5xl mx-auto mb-12">
         <motion.h1 initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}
           className="text-4xl md:text-5xl font-bold text-white mb-4 leading-tight">
           {t('home.title')}
@@ -53,7 +53,7 @@ export default function App() {
         </motion.p>
       </div>
 
-      <div className="max-w-3xl mx-auto grid md:grid-cols-2 gap-4">
+      <div className="max-w-5xl mx-auto grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
         {ALL_MODULES.map((mod, i) => (
           <ModuleCard
             key={mod.id}
