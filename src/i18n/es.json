@@ -1,0 +1,24 @@
+{
+  "nav": {
+    "modules": "Módulos",
+    "progress": "Mi Progreso",
+    "language": "Idioma"
+  },
+  "home": {
+    "title": "Plataforma de Aprendizaje IA",
+    "subtitle": "Micro-aprendizaje a tu ritmo sobre herramientas y mejores prácticas de IA",
+    "start": "Empezar",
+    "continue": "Continuar",
+    "completed": "Completado",
+    "minutes": "min"
+  },
+  "module": {
+    "next": "Siguiente",
+    "back": "Atrás",
+    "finish": "Completar Módulo",
+    "quiz": "Verificación de Conocimiento",
+    "correct": "¡Correcto!",
+    "incorrect": "No del todo — intentá de nuevo",
+    "progress": "{{current}} de {{total}}"
+  }
+}

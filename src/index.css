@@ -1,0 +1,20 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --visma-blue: #0052CC;
+}
+
+body {
+  font-family: 'Inter', system-ui, sans-serif;
+  background: #0F172A;
+  color: #F8FAFC;
+  margin: 0;
+}
+
+.slide-container {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}

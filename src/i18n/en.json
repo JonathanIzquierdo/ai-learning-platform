@@ -1,0 +1,24 @@
+{
+  "nav": {
+    "modules": "Modules",
+    "progress": "My Progress",
+    "language": "Language"
+  },
+  "home": {
+    "title": "AI Learning Platform",
+    "subtitle": "Self-paced micro-learning for AI tools and best practices",
+    "start": "Start Learning",
+    "continue": "Continue",
+    "completed": "Completed",
+    "minutes": "min"
+  },
+  "module": {
+    "next": "Next",
+    "back": "Back",
+    "finish": "Complete Module",
+    "quiz": "Knowledge Check",
+    "correct": "Correct!",
+    "incorrect": "Not quite — try again",
+    "progress": "{{current}} of {{total}}"
+  }
+}
