@@ -7,12 +7,12 @@ import ModulePlayer from './components/ModulePlayer'
 import LanguageSwitcher from './components/LanguageSwitcher'
 import { useProgress } from './hooks/useProgress'
 import { module01 } from './modules/01-token-awareness/index'
+import { module02 } from './modules/02-evals-harness/index'
 
-const ALL_MODULES = [module01]
+const ALL_MODULES = [module01, module02]
 
 export default function App() {
   const { t, i18n } = useTranslation()
-  const lang = i18n.language.startsWith('es') ? 'es' : 'en'
   const { getModuleProgress, setModuleSlide, completeModule } = useProgress()
   const [activeModule, setActiveModule] = useState(null)
 
