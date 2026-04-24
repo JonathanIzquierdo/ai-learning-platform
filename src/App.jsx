@@ -6,13 +6,14 @@ import ModuleCard from './components/ModuleCard'
 import ModulePlayer from './components/ModulePlayer'
 import LanguageSwitcher from './components/LanguageSwitcher'
 import { useProgress } from './hooks/useProgress'
+import { module00 } from './modules/00-ai-fundamentals/index'
 import { module01 } from './modules/01-token-awareness/index'
 import { module02 } from './modules/02-evals-harness/index'
 
-const ALL_MODULES = [module01, module02]
+const ALL_MODULES = [module00, module01, module02]
 
 export default function App() {
-  const { t, i18n } = useTranslation()
+  const { t } = useTranslation()
   const { getModuleProgress, setModuleSlide, completeModule } = useProgress()
   const [activeModule, setActiveModule] = useState(null)
 
