@@ -7,7 +7,7 @@ const content = {
       'Claude Opus — it gives the most accurate summary',
       'Claude Sonnet — balanced choice for everyday tasks',
       'Claude Haiku — fast, cheap, perfect for this simple task',
-      'It doesn\'t matter, they all cost the same',
+      "It doesn't matter, they all cost the same",
     ],
     correct: 2,
   },
@@ -27,12 +27,7 @@ export default function S04_Quiz1({ lang, onQuizPass }) {
   const c = content[lang]
   return (
     <div className="py-12 flex flex-col justify-center min-h-[60vh]">
-      <QuizCard
-        question={c.question}
-        options={c.options}
-        correctIndex={c.correct}
-        onPass={onQuizPass}
-      />
+      <QuizCard question={c.question} options={c.options} correctIndex={c.correct} onPass={onQuizPass} />
     </div>
   )
 }

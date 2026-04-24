@@ -1,9 +1,5 @@
 {
-  "nav": {
-    "modules": "Módulos",
-    "progress": "Mi Progreso",
-    "language": "Idioma"
-  },
+  "nav": { "modules": "Módulos", "progress": "Mi Progreso", "language": "Idioma" },
   "home": {
     "title": "Plataforma de Aprendizaje IA",
     "subtitle": "Micro-aprendizaje a tu ritmo sobre herramientas y mejores prácticas de IA",

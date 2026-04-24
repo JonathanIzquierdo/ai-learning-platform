@@ -4,9 +4,8 @@ const STORAGE_KEY = 'ai_learning_progress'
 
 export function useProgress() {
   const [progress, setProgress] = useState(() => {
-    try {
-      return JSON.parse(localStorage.getItem(STORAGE_KEY)) || {}
-    } catch { return {} }
+    try { return JSON.parse(localStorage.getItem(STORAGE_KEY)) || {} }
+    catch { return {} }
   })
 
   useEffect(() => {
@@ -16,17 +15,11 @@ export function useProgress() {
   const getModuleProgress = (moduleId) => progress[moduleId] || { currentSlide: 0, completed: false }
 
   const setModuleSlide = (moduleId, slideIndex) => {
-    setProgress(prev => ({
-      ...prev,
-      [moduleId]: { ...prev[moduleId], currentSlide: slideIndex, completed: false }
-    }))
+    setProgress(prev => ({ ...prev, [moduleId]: { ...prev[moduleId], currentSlide: slideIndex, completed: false } }))
   }
 
   const completeModule = (moduleId) => {
-    setProgress(prev => ({
-      ...prev,
-      [moduleId]: { ...prev[moduleId], completed: true, completedAt: new Date().toISOString() }
-    }))
+    setProgress(prev => ({ ...prev, [moduleId]: { ...prev[moduleId], completed: true, completedAt: new Date().toISOString() } }))
   }
 
   const resetModule = (moduleId) => {

@@ -21,7 +21,10 @@ export default function ModulePlayer({ module: mod, initialSlide = 0, onComplete
     setQuizPassed(false)
     window.scrollTo({ top: 0, behavior: 'smooth' })
   }
-  const back = () => { if (current > 0) { setCurrent(c => c - 1); setQuizPassed(false) } else onBack?.() }
+  const back = () => {
+    if (current > 0) { setCurrent(c => c - 1); setQuizPassed(false) }
+    else onBack?.()
+  }
 
   useEffect(() => { window.scrollTo({ top: 0, behavior: 'smooth' }) }, [current])
 
@@ -29,12 +32,9 @@ export default function ModulePlayer({ module: mod, initialSlide = 0, onComplete
 
   return (
     <div className="min-h-screen flex flex-col bg-slate-900">
-      {/* Top bar */}
       <div className="fixed top-0 left-0 right-0 z-10 bg-slate-900/90 backdrop-blur border-b border-slate-800 px-4 py-3">
         <div className="max-w-3xl mx-auto flex items-center gap-4">
-          <button onClick={onBack} className="text-slate-400 hover:text-white transition-colors">
-            <ArrowLeft size={18} />
-          </button>
+          <button onClick={onBack} className="text-slate-400 hover:text-white transition-colors"><ArrowLeft size={18} /></button>
           <div className="flex-1">
             <p className="text-xs text-slate-400 mb-1">{mod.title[lang]}</p>
             <ProgressBar current={current} total={slides.length} />
@@ -43,45 +43,30 @@ export default function ModulePlayer({ module: mod, initialSlide = 0, onComplete
         </div>
       </div>
 
-      {/* Slide content */}
       <div className="flex-1 pt-20 pb-28 px-4">
         <div className="max-w-3xl mx-auto">
           <AnimatePresence mode="wait">
-            <motion.div
-              key={current}
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -20 }}
-              transition={{ duration: 0.3 }}
-            >
-              <SlideComponent
-                lang={lang}
-                onQuizPass={() => setQuizPassed(true)}
-              />
+            <motion.div key={current}
+              initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }}
+              transition={{ duration: 0.3 }}>
+              <SlideComponent lang={lang} onQuizPass={() => setQuizPassed(true)} />
             </motion.div>
           </AnimatePresence>
         </div>
       </div>
 
-      {/* Bottom nav */}
       <div className="fixed bottom-0 left-0 right-0 bg-slate-900/90 backdrop-blur border-t border-slate-800 px-4 py-4">
         <div className="max-w-3xl mx-auto flex justify-between items-center">
-          <button
-            onClick={back}
-            className="flex items-center gap-2 text-slate-400 hover:text-white transition-colors text-sm"
-          >
+          <button onClick={back} className="flex items-center gap-2 text-slate-400 hover:text-white transition-colors text-sm">
             <ArrowLeft size={16} /> {t('module.back')}
           </button>
-          <button
-            onClick={next}
-            disabled={!canAdvance}
+          <button onClick={next} disabled={!canAdvance}
             className={`flex items-center gap-2 px-6 py-2.5 rounded-full font-semibold text-sm transition-all ${
-              canAdvance
-                ? 'bg-visma-blue hover:bg-visma-blue-dark text-white shadow-lg shadow-visma-blue/30'
-                : 'bg-slate-700 text-slate-500 cursor-not-allowed'
-            }`}
-          >
-            {isLast ? <><CheckCircle size={16} /> {t('module.finish')}</> : <>{t('module.next')} <ArrowRight size={16} /></>}
+              canAdvance ? 'bg-blue-600 hover:bg-blue-700 text-white' : 'bg-slate-700 text-slate-500 cursor-not-allowed'
+            }`}>
+            {isLast
+              ? <><CheckCircle size={16} /> {t('module.finish')}</>
+              : <>{t('module.next')} <ArrowRight size={16} /></>}
           </button>
         </div>
       </div>
