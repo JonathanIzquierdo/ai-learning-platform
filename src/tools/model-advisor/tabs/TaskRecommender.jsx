@@ -3,6 +3,9 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { Search, TrendingDown, Crown, DollarSign, Percent } from 'lucide-react'
 import { TASK_RECOMMENDATIONS, getModel, getProvider } from '../data'
 
+const MONEY_BAG = String.fromCodePoint(0x1F4B0)
+const CROWN = String.fromCodePoint(0x1F451)
+
 function ModelRecommendation({ modelId, rank, lang, label }) {
   const model = getModel(modelId)
   if (!model) return null
@@ -30,7 +33,7 @@ function ModelRecommendation({ modelId, rank, lang, label }) {
             <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium ${
               label === 'budget' ? 'bg-green-500/20 text-green-300' : 'bg-purple-500/20 text-purple-300'
             }`}>
-              {label === 'budget' ? '\uD83D\uDCB0 Budget' : '\uD83D\uDC51 Premium'}
+              {label === 'budget' ? MONEY_BAG + ' Budget' : CROWN + ' Premium'}
             </span>
           )}
         </div>
@@ -53,17 +56,17 @@ export default function TaskRecommender({ lang }) {
   const [searchText, setSearchText] = useState('')
 
   const KEYWORD_MAP = {
-    'chatbot': ['chat', 'bot', 'customer', 'support', 'atención', 'cliente', 'soporte'],
-    'code-gen': ['code', 'coding', 'programming', 'develop', 'código', 'programar', 'generar código'],
-    'code-review': ['review', 'pr', 'pull request', 'revisar', 'revisión'],
-    'long-docs': ['document', 'pdf', 'long', 'analysis', 'documento', 'análisis', 'largo'],
+    'chatbot': ['chat', 'bot', 'customer', 'support', 'atenci\u00f3n', 'cliente', 'soporte'],
+    'code-gen': ['code', 'coding', 'programming', 'develop', 'c\u00f3digo', 'programar', 'generar c\u00f3digo'],
+    'code-review': ['review', 'pr', 'pull request', 'revisar', 'revisi\u00f3n'],
+    'long-docs': ['document', 'pdf', 'long', 'analysis', 'documento', 'an\u00e1lisis', 'largo'],
     'summaries': ['summary', 'summarize', 'resumen', 'resumir', 'tldr'],
     'classification': ['classify', 'categorize', 'label', 'tag', 'clasificar', 'categorizar', 'etiquetar'],
-    'translation': ['translate', 'language', 'traducir', 'idioma', 'traducción'],
+    'translation': ['translate', 'language', 'traducir', 'idioma', 'traducci\u00f3n'],
     'content': ['content', 'marketing', 'email', 'blog', 'copy', 'write', 'contenido', 'escribir', 'redactar'],
-    'data-analysis': ['data', 'table', 'csv', 'excel', 'analysis', 'datos', 'tabla', 'análisis'],
-    'reasoning': ['reason', 'math', 'logic', 'complex', 'think', 'razonar', 'matemática', 'lógica', 'complejo'],
-    'agents': ['agent', 'autonomous', 'automate', 'tool', 'agente', 'autónomo', 'automatizar'],
+    'data-analysis': ['data', 'table', 'csv', 'excel', 'analysis', 'datos', 'tabla', 'an\u00e1lisis'],
+    'reasoning': ['reason', 'math', 'logic', 'complex', 'think', 'razonar', 'matem\u00e1tica', 'l\u00f3gica', 'complejo'],
+    'agents': ['agent', 'autonomous', 'automate', 'tool', 'agente', 'aut\u00f3nomo', 'automatizar'],
     'images': ['image', 'vision', 'photo', 'picture', 'imagen', 'foto', 'visual'],
     'extraction': ['extract', 'structured', 'json', 'parse', 'extraer', 'estructurado', 'parsear'],
   }
@@ -101,7 +104,7 @@ export default function TaskRecommender({ lang }) {
           type="text"
           value={searchText}
           onChange={e => { setSearchText(e.target.value); setSelectedTask(null) }}
-          placeholder={lang === 'es' ? 'Describí qué necesitás hacer...' : 'Describe what you need to do...'}
+          placeholder={lang === 'es' ? 'Describ\u00ed qu\u00e9 necesit\u00e1s hacer...' : 'Describe what you need to do...'}
           className="w-full pl-11 pr-4 py-3 bg-slate-800/50 border border-slate-700/50 rounded-xl text-white text-sm
             placeholder-slate-500 focus:outline-none focus:border-blue-500/50 focus:ring-1 focus:ring-blue-500/20 transition-all" />
       </div>
@@ -109,7 +112,7 @@ export default function TaskRecommender({ lang }) {
       {/* Task grid */}
       <div>
         <p className="text-xs text-slate-500 font-semibold uppercase mb-3">
-          {lang === 'es' ? 'O seleccioná un tipo de tarea' : 'Or select a task type'}
+          {lang === 'es' ? 'O seleccion\u00e1 un tipo de tarea' : 'Or select a task type'}
         </p>
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2">
           {TASK_RECOMMENDATIONS.map(task => (
@@ -164,13 +167,13 @@ export default function TaskRecommender({ lang }) {
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2">
               <div className="bg-green-500/5 border border-green-500/20 rounded-lg p-3">
                 <p className="text-[10px] text-green-500 font-semibold uppercase flex items-center gap-1 mb-1">
-                  <DollarSign size={10} /> {lang === 'es' ? 'Opción Budget' : 'Budget Option'}
+                  <DollarSign size={10} /> {lang === 'es' ? 'Opci\u00f3n Budget' : 'Budget Option'}
                 </p>
                 <ModelRecommendation modelId={displayTask.budget} rank={0} lang={lang} label="budget" />
               </div>
               <div className="bg-purple-500/5 border border-purple-500/20 rounded-lg p-3">
                 <p className="text-[10px] text-purple-500 font-semibold uppercase flex items-center gap-1 mb-1">
-                  <Crown size={10} /> {lang === 'es' ? 'Opción Premium' : 'Premium Option'}
+                  <Crown size={10} /> {lang === 'es' ? 'Opci\u00f3n Premium' : 'Premium Option'}
                 </p>
                 <ModelRecommendation modelId={displayTask.premium} rank={0} lang={lang} label="premium" />
               </div>
