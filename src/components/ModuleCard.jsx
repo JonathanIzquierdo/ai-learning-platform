@@ -1,12 +1,16 @@
 import { useTranslation } from 'react-i18next'
 import { motion } from 'framer-motion'
-import { Clock, PlayCircle, CheckCircle, RotateCcw } from 'lucide-react'
+import { Clock, PlayCircle, CheckCircle, RotateCcw, Shield } from 'lucide-react'
+import { getMetadata, DIFFICULTY_CONFIG, AREA_CONFIG } from '../modules/metadata'
 
 export default function ModuleCard({ module: mod, progress, onStart, index }) {
   const { i18n, t } = useTranslation()
   const lang = i18n.language.startsWith('es') ? 'es' : 'en'
   const { completed, currentSlide = 0 } = progress || {}
   const hasStarted = currentSlide > 0 || completed
+  const meta = getMetadata(mod.id)
+  const diff = DIFFICULTY_CONFIG[meta.difficulty]
+  const area = AREA_CONFIG[meta.area]
 
   return (
     <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: index * 0.1 }}
@@ -20,9 +24,16 @@ export default function ModuleCard({ module: mod, progress, onStart, index }) {
           </span>
         )}
       </div>
-      <span className="text-xs px-2 py-0.5 rounded-full font-medium"
-        style={{ background: mod.color + '20', color: mod.color }}>{mod.level[lang]}</span>
-      <h3 className="text-white font-semibold text-lg mt-2 mb-1">{mod.title[lang]}</h3>
+      <div className="flex flex-wrap gap-1.5 mb-2">
+        <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${diff.color}`}>{diff[lang]}</span>
+        <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${area.color}`}>{area[lang]}</span>
+        {meta.badge === 'visma-policy' && (
+          <span className="text-[10px] px-2 py-0.5 rounded-full font-medium bg-purple-500/20 text-purple-300 flex items-center gap-1">
+            <Shield size={8} /> Visma
+          </span>
+        )}
+      </div>
+      <h3 className="text-white font-semibold text-lg mt-1 mb-1">{mod.title[lang]}</h3>
       <p className="text-slate-400 text-sm mb-5 leading-relaxed">{mod.subtitle[lang]}</p>
       <div className="flex items-center justify-between">
         <span className="flex items-center gap-1 text-xs text-slate-500">
