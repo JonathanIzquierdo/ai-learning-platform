@@ -7,6 +7,8 @@ import CostCalculator from './tabs/CostCalculator'
 import TaskRecommender from './tabs/TaskRecommender'
 import OptimizationGuide from './tabs/OptimizationGuide'
 
+const COMPASS = String.fromCodePoint(0x1F9ED)
+
 const TABS = [
   { id: 'compare', icon: Table2, en: 'Model Comparison', es: 'Comparativa de Modelos' },
   { id: 'calculator', icon: Calculator, en: 'Cost Calculator', es: 'Calculadora de Costos' },
@@ -44,11 +46,11 @@ export default function ModelAdvisor({ onBack }) {
 
         <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="mb-8">
           <h1 className="text-3xl md:text-4xl font-bold text-white mb-2">
-            \uD83E\uDDED AI Model Advisor
+            {COMPASS} AI Model Advisor
           </h1>
           <p className="text-slate-400 text-base">
             {lang === 'es'
-              ? 'Compará modelos, estimá costos y elegí el modelo correcto para cada tarea.'
+              ? 'Compar\u00e1 modelos, estim\u00e1 costos y eleg\u00ed el modelo correcto para cada tarea.'
               : 'Compare models, estimate costs, and pick the right model for every task.'}
           </p>
         </motion.div>
