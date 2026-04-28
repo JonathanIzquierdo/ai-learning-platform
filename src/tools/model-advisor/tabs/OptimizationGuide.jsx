@@ -3,6 +3,9 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { ChevronDown, ExternalLink } from 'lucide-react'
 import { OPTIMIZATION_STRATEGIES } from '../data'
 
+const BULB = String.fromCodePoint(0x1F4A1)
+const ZAP = String.fromCodePoint(0x26A1)
+
 function StrategyCard({ strategy, lang, index }) {
   const [isOpen, setIsOpen] = useState(index === 0)
 
@@ -43,7 +46,7 @@ function StrategyCard({ strategy, lang, index }) {
               {strategy.example && (
                 <div className="ml-10 bg-slate-900/50 border border-slate-700/30 rounded-lg p-4">
                   <p className="text-[10px] text-blue-400 font-semibold uppercase mb-2">
-                    {lang === 'es' ? 'Ejemplo con números' : 'Example with numbers'}
+                    {lang === 'es' ? 'Ejemplo con n\u00fameros' : 'Example with numbers'}
                   </p>
                   <p className="text-slate-300 text-sm leading-relaxed">{strategy.example[lang]}</p>
                 </div>
@@ -82,8 +85,8 @@ export default function OptimizationGuide({ lang }) {
       {/* Intro */}
       <div className="bg-gradient-to-r from-green-500/10 to-emerald-500/5 border border-green-500/20 rounded-xl p-5">
         <h3 className="text-white font-semibold text-base mb-2 flex items-center gap-2">
-          \uD83D\uDCA1 {lang === 'es'
-            ? 'Combinando estas estrategias podés ahorrar '
+          {BULB} {lang === 'es'
+            ? 'Combinando estas estrategias pod\u00e9s ahorrar '
             : 'Combining these strategies can save you '}
           <span className="text-green-400 font-bold">{totalSavings}</span>
           {lang === 'es' ? ' en costos de IA' : ' on AI costs'}
@@ -105,14 +108,14 @@ export default function OptimizationGuide({ lang }) {
       {/* Quick reference summary */}
       <div className="bg-slate-800/30 border border-slate-700/50 rounded-xl p-5">
         <h4 className="text-white font-semibold text-sm mb-3">
-          {lang === 'es' ? '\u26A1 Referencia Rápida — \u00BFPor dónde empezar?' : '\u26A1 Quick Reference — Where to Start?'}
+          {ZAP} {lang === 'es' ? 'Referencia R\u00e1pida \u2014 \u00bfPor d\u00f3nde empezar?' : 'Quick Reference \u2014 Where to Start?'}
         </h4>
         <div className="space-y-2 text-sm">
           <div className="flex items-start gap-3">
             <span className="bg-green-500/20 text-green-300 text-xs font-bold px-2 py-0.5 rounded-full shrink-0 mt-0.5">1</span>
             <p className="text-slate-300">
               {lang === 'es'
-                ? 'Empezá por Model Routing: usá un modelo barato (GPT-4.1-nano o Gemini Flash) para el 80% del tráfico simple.'
+                ? 'Empez\u00e1 por Model Routing: us\u00e1 un modelo barato (GPT-4.1-nano o Gemini Flash) para el 80% del tr\u00e1fico simple.'
                 : 'Start with Model Routing: use a cheap model (GPT-4.1-nano or Gemini Flash) for 80% of simple traffic.'}
             </p>
           </div>
@@ -120,7 +123,7 @@ export default function OptimizationGuide({ lang }) {
             <span className="bg-green-500/20 text-green-300 text-xs font-bold px-2 py-0.5 rounded-full shrink-0 mt-0.5">2</span>
             <p className="text-slate-300">
               {lang === 'es'
-                ? 'Activá Prompt Caching en Anthropic/OpenAI si tenés system prompts grandes.'
+                ? 'Activ\u00e1 Prompt Caching en Anthropic/OpenAI si ten\u00e9s system prompts grandes.'
                 : 'Enable Prompt Caching on Anthropic/OpenAI if you have large system prompts.'}
             </p>
           </div>
@@ -128,7 +131,7 @@ export default function OptimizationGuide({ lang }) {
             <span className="bg-green-500/20 text-green-300 text-xs font-bold px-2 py-0.5 rounded-full shrink-0 mt-0.5">3</span>
             <p className="text-slate-300">
               {lang === 'es'
-                ? 'Medí todo con Helicone o LiteLLM para ver dónde se va la plata.'
+                ? 'Med\u00ed todo con Helicone o LiteLLM para ver d\u00f3nde se va la plata.'
                 : 'Measure everything with Helicone or LiteLLM to see where the money goes.'}
             </p>
           </div>
