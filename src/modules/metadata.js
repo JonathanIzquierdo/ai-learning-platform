@@ -14,6 +14,7 @@ export const MODULE_METADATA = {
   '09-finetune-rag-local':    { difficulty: 'advanced',     area: 'technical',  badge: null },
   '10-ai-skills-developers':  { difficulty: 'intermediate', area: 'technical',  badge: null },
   '11-visma-ai-code-of-conduct': { difficulty: 'beginner', area: 'all',        badge: 'visma-policy' },
+  '12-agent-skills-context':  { difficulty: 'intermediate', area: 'technical',  badge: null },
 }
 
 export const DIFFICULTY_CONFIG = {

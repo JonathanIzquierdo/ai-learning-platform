@@ -4,8 +4,8 @@ export const moduleConfig = {
   color: '#0891B2',
   duration: 25,
   title: {
-    en: 'AI Skills for Developers: The Practical Toolkit',
-    es: 'Skills de IA para Developers: El Toolkit Pr\u00e1ctico',
+    en: 'Prompt Engineering Patterns',
+    es: 'Patterns de Prompt Engineering',
   },
   subtitle: {
     en: 'From zero-shot to chain-of-thought, tool use to debugging with AI. The patterns that separate someone who uses AI from someone who is productive with it.',
