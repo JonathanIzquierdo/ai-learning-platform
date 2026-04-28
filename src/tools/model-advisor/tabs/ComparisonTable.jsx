@@ -3,10 +3,14 @@ import { motion } from 'framer-motion'
 import { ArrowUpDown, Filter, Eye, EyeOff } from 'lucide-react'
 import { MODELS, PROVIDERS, CATEGORIES, getProvider } from '../data'
 
+const EYE = String.fromCodePoint(0x1F441)
+const LOCK = String.fromCodePoint(0x1F513)
+const BRAIN = String.fromCodePoint(0x1F9E0)
+
 const BADGE_CONFIG = {
-  multimodal: { label: { en: '\uD83D\uDC41 Multimodal', es: '\uD83D\uDC41 Multimodal' }, color: 'bg-purple-500/20 text-purple-300' },
-  openSource: { label: { en: '\uD83D\uDD13 Open Source', es: '\uD83D\uDD13 Open Source' }, color: 'bg-green-500/20 text-green-300' },
-  reasoning: { label: { en: '\uD83E\uDDE0 Reasoning', es: '\uD83E\uDDE0 Razonamiento' }, color: 'bg-amber-500/20 text-amber-300' },
+  multimodal: { label: { en: EYE + ' Multimodal', es: EYE + ' Multimodal' }, color: 'bg-purple-500/20 text-purple-300' },
+  openSource: { label: { en: LOCK + ' Open Source', es: LOCK + ' Open Source' }, color: 'bg-green-500/20 text-green-300' },
+  reasoning: { label: { en: BRAIN + ' Reasoning', es: BRAIN + ' Razonamiento' }, color: 'bg-amber-500/20 text-amber-300' },
 }
 
 function costTier(price) {
@@ -105,7 +109,7 @@ export default function ComparisonTable({ lang }) {
           </div>
           <div>
             <p className="text-xs text-slate-500 font-semibold uppercase mb-2">
-              {lang === 'es' ? 'Categorías' : 'Categories'}
+              {lang === 'es' ? 'Categor\u00edas' : 'Categories'}
             </p>
             <div className="flex flex-wrap gap-1.5">
               {CATEGORIES.map(c => (
