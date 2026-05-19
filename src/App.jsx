@@ -85,9 +85,9 @@ export default function App() {
   }
 
   const NavBar = ({ active }) => (
-    <nav className="max-w-6xl mx-auto flex items-center justify-between px-4 py-6">
-      <div className="flex items-center gap-3">
-        <img src={VISMA_LOGO} alt="Visma" className="h-7 w-auto" />
+    <nav className="max-w-6xl mx-auto flex items-center justify-between px-4 py-7">
+      <div className="flex items-center gap-3 py-1">
+        <img src={VISMA_LOGO} alt="Visma" className="h-9 w-auto block" />
         <span className="text-xs font-bold text-slate-500 tracking-widest uppercase">LATAM</span>
       </div>
       <div className="flex items-center gap-2 flex-wrap justify-end">
