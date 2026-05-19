@@ -1,1 +1,104 @@
-IyBWaXNtYSBBSSBMZWFybmluZyBQbGF0Zm9ybQoKQSBtb2R1bGFyLCBzZWxmLXBhY2VkIG1pY3JvLWxlYXJuaW5nIHBsYXRmb3JtIGZvciBBSSB0b29scywgdG9rZW4gb3B0aW1pemF0aW9uLCBhbmQgYmVzdCBwcmFjdGljZXMuIEJ1aWx0IGZvciBWaXNtYSBjb21wYW5pZXMgYWNyb3NzIExBVEFNIGFuZCBnbG9iYWwgcmVnaW9ucy4KCiMjIEZlYXR1cmVzCgotIPCfk5YgTW9kdWxhciBsZWFybmluZyBwYXRocyAtIGVhY2ggbW9kdWxlIGlzIGluZGVwZW5kZW50IGFuZCBzZWxmLWNvbnRhaW5lZAotIPCfjI4gU2VsZi1wYWNlZCAtIHBhdXNlIGFuZCByZXN1bWUgYW55d2hlcmUKLSDwn5OBIEJ1aWx0LWluIHF1aXplcyB0byBjb25maXJtIGNvbXByZWhlbnNpb24KLSDwn4mSIEZ1bGwgaTE4biBzdXBwb3J0IChFbmdsaXNoICYgU3BhbmlzaCkKLSDwn5SXIEFjY2Vzc2liaWxpdHkgZmlyc3QKLSDwn5SEIERlc2lnbmVkIHRvIGludGVncmF0ZSB3aXRoIHRoZSBBY2NlbGVyYXRvciBhc3Nlc3NtZW50IHRvb2wKCiMjIFRlY2ggU3RhY2sKCi0gUmVhY3QgKyBWaXRlCi0gcmVhY3QtaTE4bmV4dCBmb3IgbXVsdGlsYW5ndWFnZQotIFRhaWx3aW5kIENTUwotIEZyYW1lciBNb3Rpb24gZm9yIGFuaW1hdGlvbnMKLSBMb2NhbFN0b3JhZ2UgZm9yIHByb2dyZXNzIHBlcnNpc3RlbmNlCgojIyBNb2R1bGVzCgp8IE1vZHVsZSB8IFRvcGljIHwgTGV2ZWwgfCBTdGF0dXMgfAp8LS0tLS0tLS18LS0tLS0tLS18LS0tLS0tLXwtLS0tLS0tLXwKfCAwMSB8IFRva2VuIEF3YXJlbmVzcyAmIENvc3QgT3B0aW1pemF0aW9uIHwgQWxsIGxldmVscyB8IPCfm97igIggSW4gUHJvZ3Jlc3MgfAoKIyMgR2V0dGluZyBTdGFydGVkCgpgYGBiYXNoCm5wbSBpbnN0YWxsCm5wbSBydW4gZGV2CmBgYAoKIyMgUHJvamVjdCBTdHJ1Y3R1cmUKCmBgYAp2aXNtYS1haS1sZWFybmluZy8K4pSc4pSA4pSAIHNyYy8K4pSCICAg4pSc4pSA4pSAIG1vZHVsZXMvCuKUgiAgIOKUgiAgIOKUnOKUgOKUgCAwMS10b2tlbi1hd2FyZW5lc3MvCuKUgiAgIOKUgiAgIOKUgsKgwqAg4pSc4pSA4pSAIHNsaWRlcy8KuKUgiAgIOKUgiAgIOKUgsKgwqAg4pSc4pSA4pSAIGNvbmZpZy5qcwrilIIgICDilIIgICDilILCoMKgIOKUlOKUgOKUgCBpMThuLmpzCuKUgiAgIOKUnOKUgOKUgCBjb21wb25lbnRzLwrilIIgICDilIIgICDilJTilIDilIAgLi4uCuKUgiAgIOKUnOKUgOKUgCBpMThuLwrilIIgICDilIIgICDilJTilIDilIAgLi4uCuKUgiAgIOKUlOKUgOKUgCBBcHAuanN4CuKUnOKUgOKUgCBwYWNrYWdlLmpzb24KYGBg
+# Visma AI Learning Platform
+
+Self-paced AI micro-learning platform built for Visma LATAM. 13 modules in EN/ES, two interactive tools, and a Workshops & Talks catalog — all delivered as a single React app deployed on Vercel.
+
+**Live:** https://ai-learning-platform-livid.vercel.app
+
+## Features
+
+- 🎓 **13 self-paced modules** (00–12) covering AI fundamentals, evals, security, multi-agent systems, fine-tuning, and Visma's AI Code of Conduct
+- 🌐 **Full i18n** (English & Spanish) across modules, tools, navigation, and events
+- 💾 **Persistent progress** in `localStorage` — pause and resume any module from any device
+- 🎉 **Confetti + completion screen** on module finish
+- 🧭 **Model Advisor** — interactive tool to pick the right AI model for a task
+- ✨ **Token Optimizer** — paste a prompt, see savings opportunities
+- 📅 **Workshops & Talks** — browse the catalog of in-person sessions and request one
+- 📱 Responsive (1 / 2 / 3-column grid on mobile / tablet / desktop)
+
+## Tech Stack
+
+- **React + Vite**
+- **Tailwind CSS** for styling
+- **Framer Motion** for animations
+- **react-i18next** for EN/ES translations
+- **canvas-confetti** (CDN) for completion celebration
+- **lucide-react** for icons
+- **Vercel** for hosting (auto-deploy from `main`)
+
+## Modules
+
+| #   | Module                              | Level         | Audience           |
+| --- | ----------------------------------- | ------------- | ------------------ |
+| 00  | AI Fundamentals                     | Beginner      | All roles          |
+| 01  | Token Awareness                     | Beginner      | All roles          |
+| 02  | AI Evals & Harness                  | Intermediate  | Technical          |
+| 03  | AI Maturity                         | Intermediate  | Leadership         |
+| 04  | Metrics & KPIs                      | Intermediate  | All roles          |
+| 05  | AI for Non-Technical                | Beginner      | Ops / HR / Finance |
+| 06  | AI Security                         | Intermediate  | All roles          |
+| 07  | Multi-Agent Systems                 | Intermediate  | Developers         |
+| 08  | Context Engineering                 | Intermediate  | All roles          |
+| 09  | Fine-tuning vs RAG vs Local         | Advanced      | Technical          |
+| 10  | AI Skills for Developers            | Intermediate  | Technical          |
+| 11  | Visma AI Code of Conduct            | Beginner      | All roles          |
+| 12  | Agent Skills & Context              | Intermediate  | Technical          |
+
+## Workshops & Talks
+
+Beyond self-paced modules, the platform lists live sessions Visma teams can request:
+
+- **Workshops** — multi-hour hands-on sessions (AI Master Class, AI in Testing)
+- **Talks** — 45–120 min focused sessions for leaders and technical teams
+
+Workshop requests link to internal Space registration pages. Talk requests open a pre-filled email (via Gmail, native mail client, or clipboard copy) to the contact owner.
+
+## Getting Started
+
+```bash
+npm install
+npm run dev
+```
+
+Vite dev server runs at `http://localhost:5173`.
+
+To build for production:
+
+```bash
+npm run build
+npm run preview
+```
+
+## Project Structure
+
+```
+ai-learning-platform/
+├── README.md
+├── AGENTS.md              ← contributor & agent guide (read first if editing)
+├── package.json
+├── vite.config.js
+├── tailwind.config.js
+└── src/
+    ├── App.jsx            ← module registry, routing, navbar
+    ├── main.jsx
+    ├── index.css
+    ├── components/        ← ModuleCard, ModulePlayer, EventDetail, …
+    ├── data/              ← events.js (workshops & talks catalog)
+    ├── hooks/             ← useProgress (localStorage)
+    ├── i18n/              ← config + en.json + es.json
+    ├── modules/           ← 13 self-paced modules (00–12) + metadata.js
+    │   └── NN-name/
+    │       ├── config.js
+    │       ├── index.js
+    │       └── slides/
+    └── tools/
+        ├── TokenOptimizer.jsx
+        └── model-advisor/
+```
+
+## Contributing
+
+Contributors and AI agents should read **[AGENTS.md](./AGENTS.md)** before making changes. It documents code conventions, how to add modules and events, what NOT to touch, and the project roadmap.
+
+## License
+
+Internal — Visma LATAM.
