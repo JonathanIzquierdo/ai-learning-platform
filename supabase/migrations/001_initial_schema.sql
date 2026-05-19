@@ -5,9 +5,13 @@
 -- Safe to re-run: all CREATE statements use IF NOT EXISTS where possible,
 -- and policies are dropped before being re-created.
 --
--- Tables:
---   profiles               — one row per user (extends auth.users)
+-- ORDER MATTERS: `admins` must be created BEFORE any other table whose
+-- policies reference it. Postgres validates policy expressions at CREATE
+-- time, so referencing a table that doesn't exist yet raises 42P01.
+--
+-- Tables (creation order):
 --   admins                 — allowlist of admin emails
+--   profiles               — one row per user (extends auth.users)
 --   module_progress        — per-user per-module progress (replaces localStorage)
 --   workshop_interests     — log of workshop "I'm interested" clicks
 --   talk_requests          — log of talk request submissions
@@ -40,7 +44,31 @@ create trigger enforce_email_domain
   for each row execute function public.enforce_email_domain();
 
 -- ---------------------------------------------------------------------------
--- 2. profiles — one row per authenticated user
+-- 2. admins — MUST BE FIRST (other policies reference it)
+-- ---------------------------------------------------------------------------
+create table if not exists public.admins (
+  email      text primary key,
+  added_at   timestamptz not null default now(),
+  notes      text
+);
+
+alter table public.admins enable row level security;
+
+drop policy if exists "admins_select_admins" on public.admins;
+create policy "admins_select_admins"
+  on public.admins for select
+  using (exists (select 1 from public.admins a where a.email = auth.jwt() ->> 'email'));
+
+-- Seed initial admins
+insert into public.admins (email, notes) values
+  ('jonathan.izquierdo@visma.com', 'Project owner'),
+  ('marisa.pineiro@visma.com',     'Admin'),
+  ('isabel.loaldi@visma.com',      'Admin'),
+  ('diego.colombo@visma.com',      'Admin')
+on conflict (email) do nothing;
+
+-- ---------------------------------------------------------------------------
+-- 3. profiles — one row per authenticated user
 -- ---------------------------------------------------------------------------
 create table if not exists public.profiles (
   id          uuid primary key references auth.users(id) on delete cascade,
@@ -96,30 +124,6 @@ drop trigger if exists on_auth_user_created on auth.users;
 create trigger on_auth_user_created
   after insert on auth.users
   for each row execute function public.handle_new_user();
-
--- ---------------------------------------------------------------------------
--- 3. admins — allowlist of admin emails
--- ---------------------------------------------------------------------------
-create table if not exists public.admins (
-  email      text primary key,
-  added_at   timestamptz not null default now(),
-  notes      text
-);
-
-alter table public.admins enable row level security;
-
-drop policy if exists "admins_select_admins" on public.admins;
-create policy "admins_select_admins"
-  on public.admins for select
-  using (exists (select 1 from public.admins a where a.email = auth.jwt() ->> 'email'));
-
--- Seed initial admins
-insert into public.admins (email, notes) values
-  ('jonathan.izquierdo@visma.com', 'Project owner'),
-  ('marisa.pineiro@visma.com',     'Admin'),
-  ('isabel.loaldi@visma.com',      'Admin'),
-  ('diego.colombo@visma.com',      'Admin')
-on conflict (email) do nothing;
 
 -- ---------------------------------------------------------------------------
 -- 4. module_progress — replaces localStorage
