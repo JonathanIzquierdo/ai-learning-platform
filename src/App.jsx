@@ -9,6 +9,7 @@ import EventsList from './components/EventsList'
 import EventDetail from './components/EventDetail'
 import AuthModal from './components/AuthModal'
 import ProfileView from './components/ProfileView'
+import AdminPanel from './components/admin/AdminPanel'
 import ModelAdvisor from './tools/model-advisor/ModelAdvisor'
 import TokenOptimizer from './tools/TokenOptimizer'
 import { useProgress } from './hooks/useProgress'
@@ -35,11 +36,12 @@ const COMPASS  = String.fromCodePoint(0x1F9ED)
 const SPARKLE  = String.fromCodePoint(0x2728)
 const CALENDAR = String.fromCodePoint(0x1F4C5)
 const USER     = String.fromCodePoint(0x1F464)
+const SHIELD   = String.fromCodePoint(0x1F6E1)
 
 export default function App() {
   const { t, i18n } = useTranslation()
   const { getModuleProgress, completeModule } = useProgress()
-  const { user, profile, signOut, loading: authLoading } = useAuth()
+  const { user, profile, isAdmin, signOut, loading: authLoading } = useAuth()
   const [activeModule, setActiveModule]   = useState(null)
   const [view, setView]                   = useState('home')
   const [eventsKind, setEventsKind]       = useState(null)
@@ -52,7 +54,6 @@ export default function App() {
   const eventsMenuRef = useRef(null)
   const userMenuRef   = useRef(null)
 
-  // Detect incomplete profile after auth completes
   const profileIncomplete = Boolean(user && profile && (!profile.name || !profile.team))
 
   useEffect(() => {
@@ -70,6 +71,10 @@ export default function App() {
 
   const goToProfile = () => {
     setView('profile'); setUserMenuOpen(false); setEventsKind(null); setSelectedEventId(null)
+  }
+
+  const goToAdmin = () => {
+    setView('admin'); setUserMenuOpen(false); setEventsKind(null); setSelectedEventId(null)
   }
 
   const startModule = (mod) => {
@@ -127,6 +132,15 @@ export default function App() {
           className={`px-3 py-1 rounded-full text-sm font-medium transition-all ${active === 'optimizer' ? 'bg-emerald-600 text-white' : 'text-slate-400 hover:text-white'}`}>
           {SPARKLE} <span className="hidden sm:inline">{lang === 'es' ? 'Optimizar Tokens' : 'Token Optimizer'}</span>
         </button>
+
+        {/* Admin button — only visible to admins */}
+        {isAdmin && (
+          <button onClick={goToAdmin}
+            className={`px-3 py-1 rounded-full text-sm font-medium transition-all ${active === 'admin' ? 'bg-amber-500 text-slate-900' : 'text-amber-300 hover:text-amber-200'}`}>
+            {SHIELD} <span className="hidden sm:inline">Admin</span>
+          </button>
+        )}
+
         <LanguageSwitcher />
 
         {/* Auth area */}
@@ -187,7 +201,6 @@ export default function App() {
     )
   }
 
-  // Banner that appears on top of any view when profile is incomplete
   const IncompleteBanner = () => (profileIncomplete && view !== 'profile') ? (
     <div className="max-w-5xl mx-auto px-4 -mt-2 mb-4">
       <button onClick={goToProfile}
@@ -216,6 +229,7 @@ export default function App() {
   if (view === 'advisor')   return wrap(<ModelAdvisor onBack={() => setView('home')} />, 'advisor')
   if (view === 'optimizer') return wrap(<TokenOptimizer />, 'optimizer')
   if (view === 'profile')   return wrap(<ProfileView lang={lang} onBack={() => setView('home')} />, 'profile')
+  if (view === 'admin')     return wrap(<AdminPanel  lang={lang} onBack={() => setView('home')} />, 'admin')
 
   if (view === 'events') {
     return wrap(
