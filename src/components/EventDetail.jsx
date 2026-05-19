@@ -1,16 +1,23 @@
 import { useState } from 'react'
 import { motion } from 'framer-motion'
 import { WORKSHOPS, TALKS, CONTACT_EMAIL, CONTACT_NAME } from '../data/events'
+import { useAuth } from '../lib/auth'
+import { supabase, isSupabaseReady } from '../lib/supabase'
+import AuthModal from './AuthModal'
 
 export default function EventDetail({ kind, id, lang, onBack }) {
   const items = kind === 'workshops' ? WORKSHOPS : TALKS
   const item = items.find((x) => x.id === id)
-  const [formOpen, setFormOpen] = useState(false)
-  const [email, setEmail] = useState('')
-  const [name, setName] = useState('')
-  const [team, setTeam] = useState('')
-  const [note, setNote] = useState('')
-  const [copied, setCopied] = useState(false)
+
+  const { user, profile } = useAuth()
+  const [formOpen, setFormOpen]     = useState(false)
+  const [name, setName]             = useState('')
+  const [team, setTeam]             = useState('')
+  const [note, setNote]             = useState('')
+  const [submitting, setSubmitting] = useState(false)
+  const [submitted, setSubmitted]   = useState(false)
+  const [authModal, setAuthModal]   = useState(false)
+  const [errorMsg, setErrorMsg]     = useState('')
 
   if (!item) return null
 
@@ -29,19 +36,18 @@ export default function EventDetail({ kind, id, lang, onBack }) {
       requestTalk: 'Request this talk',
       moreInfo: 'For more information, contact',
       formTitle: 'Request this talk',
-      formSubtitle: 'Fill in your details and pick how you want to send the request.',
-      yourEmail: 'Your email',
+      formSubtitle: 'Your request will be sent to {name}. He will get back to you at {email}.',
       yourName: 'Your name',
       yourTeam: 'Team / Area (optional)',
       yourNote: 'Anything else? (optional)',
-      sendGmail: 'Send via Gmail',
-      sendMail: 'Open in mail client',
-      copy: 'Copy email text',
-      copied: 'Copied to clipboard ✓',
+      send: 'Send request',
+      sending: 'Sending…',
       cancel: 'Cancel',
-      hint: 'Use Gmail if your work email is on Google. Use “mail client” for Outlook/Apple Mail. Or copy the text and paste it anywhere.',
-      emailToCopy: 'To',
-      subjectToCopy: 'Subject'
+      thanks: 'Thanks — your request was received.',
+      thanksSub: 'We will be in touch shortly.',
+      genericError: 'Something went wrong. Please try again.',
+      workshopSent: 'Logged your interest — opening registration…',
+      signInToRequest: 'Sign in to request'
     },
     es: {
       back: '← Volver',
@@ -57,95 +63,68 @@ export default function EventDetail({ kind, id, lang, onBack }) {
       requestTalk: 'Solicitar esta charla',
       moreInfo: 'Para más información, contactar a',
       formTitle: 'Solicitar esta charla',
-      formSubtitle: 'Completá tus datos y elegí cómo querés enviar la solicitud.',
-      yourEmail: 'Tu email',
+      formSubtitle: 'Tu solicitud se va a enviar a {name}. Se contactará con vos a {email}.',
       yourName: 'Tu nombre',
       yourTeam: 'Equipo / Área (opcional)',
       yourNote: '¿Algo más? (opcional)',
-      sendGmail: 'Enviar por Gmail',
-      sendMail: 'Abrir en cliente de email',
-      copy: 'Copiar texto del email',
-      copied: 'Copiado al portapapeles ✓',
+      send: 'Enviar solicitud',
+      sending: 'Enviando…',
       cancel: 'Cancelar',
-      hint: 'Usá Gmail si tu correo corporativo es de Google. Usá “cliente de email” para Outlook/Apple Mail. O copiá el texto y pegalo donde quieras.',
-      emailToCopy: 'Para',
-      subjectToCopy: 'Asunto'
+      thanks: '¡Gracias! Recibimos tu solicitud.',
+      thanksSub: 'Te vamos a contactar pronto.',
+      genericError: 'Algo salió mal. Intentá de nuevo.',
+      workshopSent: 'Registramos tu interés — abriendo inscripción…',
+      signInToRequest: 'Iniciá sesión para solicitar'
     }
   }[lang]
 
-  const handleWorkshopRequest = () => {
+  const isWorkshop = kind === 'workshops'
+
+  // ---------- Workshop CTA -------------------------------------------------
+  const handleWorkshopRequest = async () => {
+    if (!user) { setAuthModal(true); return }
+    setSubmitting(true); setErrorMsg('')
+    if (isSupabaseReady()) {
+      const { error } = await supabase.from('workshop_interests').insert({
+        user_id: user.id, workshop_id: item.id
+      })
+      if (error) console.warn('[workshop_interests] insert error', error)
+    }
+    setSubmitting(false)
     if (item.requestUrl) window.open(item.requestUrl, '_blank', 'noopener')
   }
 
-  // ---- Mensaje base ---------------------------------------------------------
-  const buildEmailParts = () => {
-    const title = item.title[lang]
-    const subject = lang === 'es'
-      ? `Solicitud de charla: ${title}`
-      : `Talk request: ${title}`
-    const body = lang === 'es'
-      ? `Hola Jonathan,\n\nMe interesa la charla: "${title}".\n\nDatos de contacto:\n• Nombre: ${name || '(no indicado)'}\n• Email: ${email}\n• Equipo / Área: ${team || '(no indicado)'}\n\nComentarios:\n${note || '(sin comentarios)'}\n\n¿Podríamos coordinar una sesión?\n\nGracias!`
-      : `Hi Jonathan,\n\nI'm interested in the talk: "${title}".\n\nContact info:\n• Name: ${name || '(not provided)'}\n• Email: ${email}\n• Team / Area: ${team || '(not provided)'}\n\nNotes:\n${note || '(no notes)'}\n\nCould we coordinate a session?\n\nThanks!`
-    return { subject, body }
+  // ---------- Talk request submission --------------------------------------
+  const openTalkForm = () => {
+    if (!user) { setAuthModal(true); return }
+    setName(profile?.name || '')
+    setTeam(profile?.team || '')
+    setNote('')
+    setSubmitted(false)
+    setErrorMsg('')
+    setFormOpen(true)
   }
 
-  // ---- Gmail compose URL (funciona en gmail web) ----------------------------
-  const buildGmailUrl = () => {
-    const { subject, body } = buildEmailParts()
-    const params = new URLSearchParams({
-      view: 'cm',
-      fs: '1',
-      to: CONTACT_EMAIL,
-      su: subject,
-      body: body,
-      cc: email
-    })
-    return `https://mail.google.com/mail/?${params.toString()}`
-  }
-
-  // ---- mailto fallback (Outlook / Apple Mail / cliente nativo) --------------
-  const buildMailto = () => {
-    const { subject, body } = buildEmailParts()
-    return `mailto:${CONTACT_EMAIL}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}&cc=${encodeURIComponent(email)}`
-  }
-
-  // ---- Handlers de envío ----------------------------------------------------
-  const handleSendGmail = (e) => {
+  const handleSendTalk = async (e) => {
     e.preventDefault()
-    if (!email) return
-    window.open(buildGmailUrl(), '_blank', 'noopener')
+    if (!user || !isSupabaseReady()) return
+    setSubmitting(true); setErrorMsg('')
+    const { error } = await supabase.from('talk_requests').insert({
+      user_id: user.id,
+      talk_id: item.id,
+      name: name || null,
+      team: team || null,
+      message: note || null
+    })
+    setSubmitting(false)
+    if (error) { setErrorMsg(t.genericError); console.warn('[talk_requests] insert error', error); return }
+    setSubmitted(true)
   }
-
-  const handleSendMailto = () => {
-    if (!email) return
-    window.location.href = buildMailto()
-  }
-
-  const handleCopy = async () => {
-    if (!email) return
-    const { subject, body } = buildEmailParts()
-    const text = `${t.emailToCopy}: ${CONTACT_EMAIL}\n${t.subjectToCopy}: ${subject}\n\n${body}`
-    try {
-      await navigator.clipboard.writeText(text)
-      setCopied(true)
-      setTimeout(() => setCopied(false), 2200)
-    } catch {
-      // fallback ultra-defensivo si clipboard API no está disponible
-      const ta = document.createElement('textarea')
-      ta.value = text
-      document.body.appendChild(ta)
-      ta.select()
-      try { document.execCommand('copy') } catch { /* noop */ }
-      document.body.removeChild(ta)
-      setCopied(true)
-      setTimeout(() => setCopied(false), 2200)
-    }
-  }
-
-  const isWorkshop = kind === 'workshops'
 
   return (
     <div className="max-w-4xl mx-auto px-4 py-8">
+      <AuthModal open={authModal} onClose={() => setAuthModal(false)} lang={lang} reason="event" />
+
       <button onClick={onBack}
         className="text-slate-400 hover:text-white text-sm font-medium mb-6 transition-colors">
         {t.back}
@@ -262,10 +241,10 @@ export default function EventDetail({ kind, id, lang, onBack }) {
         className="mb-6">
         {isWorkshop ? (
           <div className="flex flex-col sm:flex-row gap-3 items-stretch sm:items-center">
-            <button onClick={handleWorkshopRequest}
-              className="flex-1 px-6 py-4 rounded-xl font-bold text-white text-lg transition-all hover:opacity-90 hover:-translate-y-0.5"
+            <button onClick={handleWorkshopRequest} disabled={submitting}
+              className="flex-1 px-6 py-4 rounded-xl font-bold text-white text-lg transition-all hover:opacity-90 hover:-translate-y-0.5 disabled:opacity-60"
               style={{ background: item.color }}>
-              {t.requestWorkshop} →
+              {submitting ? t.sending : (user ? t.requestWorkshop : t.signInToRequest)} →
             </button>
             <div className="text-sm text-slate-400 sm:text-right">
               {t.moreInfo}{' '}
@@ -276,10 +255,10 @@ export default function EventDetail({ kind, id, lang, onBack }) {
           </div>
         ) : !formOpen ? (
           <div className="flex flex-col sm:flex-row gap-3 items-stretch sm:items-center">
-            <button onClick={() => setFormOpen(true)}
+            <button onClick={openTalkForm}
               className="flex-1 px-6 py-4 rounded-xl font-bold text-white text-lg transition-all hover:opacity-90 hover:-translate-y-0.5"
               style={{ background: item.color }}>
-              {t.requestTalk} →
+              {user ? t.requestTalk : t.signInToRequest} →
             </button>
             <div className="text-sm text-slate-400 sm:text-right">
               {t.moreInfo}{' '}
@@ -288,52 +267,47 @@ export default function EventDetail({ kind, id, lang, onBack }) {
               </a>
             </div>
           </div>
+        ) : submitted ? (
+          <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}
+            className="p-6 rounded-xl bg-emerald-500/10 ring-1 ring-emerald-500/30 text-center">
+            <div className="text-3xl mb-2">✅</div>
+            <h3 className="text-xl font-bold text-white mb-1">{t.thanks}</h3>
+            <p className="text-sm text-slate-300">{t.thanksSub}</p>
+          </motion.div>
         ) : (
           <motion.form initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}
-            onSubmit={handleSendGmail}
+            onSubmit={handleSendTalk}
             className="p-6 rounded-xl bg-slate-800/60 ring-1 ring-slate-700/60">
             <h3 className="text-xl font-bold text-white mb-1">{t.formTitle}</h3>
-            <p className="text-sm text-slate-400 mb-5">{t.formSubtitle}</p>
+            <p className="text-sm text-slate-400 mb-5">
+              {t.formSubtitle.replace('{name}', CONTACT_NAME).replace('{email}', user?.email || '')}
+            </p>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-3">
-              <input type="email" required value={email} onChange={(e) => setEmail(e.target.value)}
-                placeholder={t.yourEmail}
-                className="px-4 py-3 rounded-lg bg-slate-900 text-white ring-1 ring-slate-700 focus:ring-2 focus:ring-blue-500 outline-none" />
               <input type="text" value={name} onChange={(e) => setName(e.target.value)}
                 placeholder={t.yourName}
                 className="px-4 py-3 rounded-lg bg-slate-900 text-white ring-1 ring-slate-700 focus:ring-2 focus:ring-blue-500 outline-none" />
+              <input type="text" value={team} onChange={(e) => setTeam(e.target.value)}
+                placeholder={t.yourTeam}
+                className="px-4 py-3 rounded-lg bg-slate-900 text-white ring-1 ring-slate-700 focus:ring-2 focus:ring-blue-500 outline-none" />
             </div>
-            <input type="text" value={team} onChange={(e) => setTeam(e.target.value)}
-              placeholder={t.yourTeam}
-              className="w-full px-4 py-3 rounded-lg bg-slate-900 text-white ring-1 ring-slate-700 focus:ring-2 focus:ring-blue-500 outline-none mb-3" />
             <textarea value={note} onChange={(e) => setNote(e.target.value)}
               placeholder={t.yourNote} rows={3}
-              className="w-full px-4 py-3 rounded-lg bg-slate-900 text-white ring-1 ring-slate-700 focus:ring-2 focus:ring-blue-500 outline-none mb-2 resize-none" />
-            <p className="text-xs text-slate-500 mb-5">{t.hint}</p>
+              className="w-full px-4 py-3 rounded-lg bg-slate-900 text-white ring-1 ring-slate-700 focus:ring-2 focus:ring-blue-500 outline-none mb-3 resize-none" />
 
-            {/* Primario: Gmail */}
-            <button type="submit" disabled={!email}
-              className="w-full px-6 py-3 rounded-lg font-bold text-white transition-all hover:opacity-90 disabled:opacity-40 disabled:cursor-not-allowed mb-3 flex items-center justify-center gap-2"
-              style={{ background: item.color }}>
-              <span aria-hidden>✉️</span> {t.sendGmail} →
-            </button>
+            {errorMsg && <p className="text-xs text-red-400 mb-3">{errorMsg}</p>}
 
-            {/* Secundario: mailto + copiar */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mb-3">
-              <button type="button" onClick={handleSendMailto} disabled={!email}
-                className="px-4 py-2.5 rounded-lg font-medium text-slate-200 bg-slate-900/60 ring-1 ring-slate-700 hover:ring-slate-500 hover:text-white transition-all disabled:opacity-40 disabled:cursor-not-allowed text-sm">
-                {t.sendMail}
+            <div className="flex gap-3">
+              <button type="submit" disabled={submitting}
+                className="flex-1 px-6 py-3 rounded-lg font-bold text-white transition-all hover:opacity-90 disabled:opacity-60"
+                style={{ background: item.color }}>
+                {submitting ? t.sending : t.send + ' →'}
               </button>
-              <button type="button" onClick={handleCopy} disabled={!email}
-                className="px-4 py-2.5 rounded-lg font-medium text-slate-200 bg-slate-900/60 ring-1 ring-slate-700 hover:ring-slate-500 hover:text-white transition-all disabled:opacity-40 disabled:cursor-not-allowed text-sm">
-                {copied ? t.copied : t.copy}
+              <button type="button" onClick={() => setFormOpen(false)}
+                className="px-6 py-3 rounded-lg font-medium text-slate-300 hover:text-white transition-colors">
+                {t.cancel}
               </button>
             </div>
-
-            <button type="button" onClick={() => setFormOpen(false)}
-              className="w-full px-6 py-2 rounded-lg font-medium text-slate-400 hover:text-white transition-colors text-sm">
-              {t.cancel}
-            </button>
           </motion.form>
         )}
       </motion.div>

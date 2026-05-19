@@ -7,9 +7,11 @@ import LanguageSwitcher from './components/LanguageSwitcher'
 import EventsHome from './components/EventsHome'
 import EventsList from './components/EventsList'
 import EventDetail from './components/EventDetail'
+import AuthModal from './components/AuthModal'
 import ModelAdvisor from './tools/model-advisor/ModelAdvisor'
 import TokenOptimizer from './tools/TokenOptimizer'
 import { useProgress } from './hooks/useProgress'
+import { useAuth } from './lib/auth'
 import { module00 } from './modules/00-ai-fundamentals/index'
 import { module01 } from './modules/01-token-awareness/index'
 import { module02 } from './modules/02-evals-harness/index'
@@ -28,36 +30,45 @@ const ALL_MODULES = [module00, module01, module02, module03, module04, module05,
 
 const VISMA_LOGO = 'data:image/png;base64,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'
 
-const COMPASS = String.fromCodePoint(0x1F9ED)
-const SPARKLE = String.fromCodePoint(0x2728)
+const COMPASS  = String.fromCodePoint(0x1F9ED)
+const SPARKLE  = String.fromCodePoint(0x2728)
 const CALENDAR = String.fromCodePoint(0x1F4C5)
+const USER     = String.fromCodePoint(0x1F464)
 
 export default function App() {
   const { t, i18n } = useTranslation()
   const { getModuleProgress, completeModule } = useProgress()
-  const [activeModule, setActiveModule] = useState(null)
-  const [view, setView] = useState('home')
-  const [eventsKind, setEventsKind] = useState(null) // null | 'workshops' | 'talks'
+  const { user, profile, signOut, loading: authLoading } = useAuth()
+  const [activeModule, setActiveModule]   = useState(null)
+  const [view, setView]                   = useState('home')
+  const [eventsKind, setEventsKind]       = useState(null)
   const [selectedEventId, setSelectedEventId] = useState(null)
-  const [eventsMenuOpen, setEventsMenuOpen] = useState(false)
+  const [eventsMenuOpen, setEventsMenuOpen]   = useState(false)
+  const [userMenuOpen, setUserMenuOpen]       = useState(false)
+  const [authModalOpen, setAuthModalOpen]     = useState(false)
+  const [authReason, setAuthReason]           = useState('module')
   const lang = i18n.language.startsWith('es') ? 'es' : 'en'
   const eventsMenuRef = useRef(null)
+  const userMenuRef   = useRef(null)
 
   useEffect(() => {
     const handleClick = (e) => {
-      if (eventsMenuRef.current && !eventsMenuRef.current.contains(e.target)) {
-        setEventsMenuOpen(false)
-      }
+      if (eventsMenuRef.current && !eventsMenuRef.current.contains(e.target)) setEventsMenuOpen(false)
+      if (userMenuRef.current   && !userMenuRef.current.contains(e.target))   setUserMenuOpen(false)
     }
-    if (eventsMenuOpen) document.addEventListener('mousedown', handleClick)
+    document.addEventListener('mousedown', handleClick)
     return () => document.removeEventListener('mousedown', handleClick)
-  }, [eventsMenuOpen])
+  }, [])
 
   const goToEvents = (kind) => {
-    setView('events')
-    setEventsKind(kind)
-    setSelectedEventId(null)
-    setEventsMenuOpen(false)
+    setView('events'); setEventsKind(kind); setSelectedEventId(null); setEventsMenuOpen(false)
+  }
+
+  const startModule = (mod) => {
+    if (!user) {
+      setAuthReason('module'); setAuthModalOpen(true); return
+    }
+    setActiveModule(mod)
   }
 
   const NavBar = ({ active }) => (
@@ -109,6 +120,35 @@ export default function App() {
           {SPARKLE} <span className="hidden sm:inline">{lang === 'es' ? 'Optimizar Tokens' : 'Token Optimizer'}</span>
         </button>
         <LanguageSwitcher />
+
+        {/* Auth area */}
+        {!authLoading && (user ? (
+          <div className="relative" ref={userMenuRef}>
+            <button onClick={() => setUserMenuOpen((o) => !o)}
+              className="px-3 py-1 rounded-full text-sm font-medium text-slate-300 hover:text-white bg-slate-800 hover:bg-slate-700 transition-all flex items-center gap-1">
+              {USER} <span className="hidden sm:inline max-w-[140px] truncate">{profile?.name || user.email}</span>
+              <span className="text-[10px] opacity-70">▾</span>
+            </button>
+            {userMenuOpen && (
+              <div className="absolute right-0 mt-2 w-60 rounded-xl bg-slate-800 ring-1 ring-slate-700 shadow-xl overflow-hidden z-50">
+                <div className="px-4 py-3 border-b border-slate-700/60">
+                  <div className="text-sm font-medium text-white truncate">{profile?.name || (lang === 'es' ? 'Sin nombre' : 'No name')}</div>
+                  <div className="text-[11px] text-slate-400 truncate">{user.email}</div>
+                  {profile?.team && <div className="text-[11px] text-slate-500 truncate mt-1">{profile.team}</div>}
+                </div>
+                <button onClick={() => { signOut(); setUserMenuOpen(false) }}
+                  className="w-full text-left px-4 py-3 text-sm text-slate-200 hover:bg-slate-700 transition-colors">
+                  {lang === 'es' ? 'Cerrar sesión' : 'Sign out'}
+                </button>
+              </div>
+            )}
+          </div>
+        ) : (
+          <button onClick={() => { setAuthReason('module'); setAuthModalOpen(true) }}
+            className="px-3 py-1 rounded-full text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 transition-all">
+            {lang === 'es' ? 'Iniciar sesión' : 'Sign in'}
+          </button>
+        ))}
       </div>
     </nav>
   )
@@ -125,52 +165,35 @@ export default function App() {
     )
   }
 
-  if (view === 'advisor') {
-    return (
-      <div className="min-h-screen bg-slate-900">
-        <NavBar active="advisor" />
-        <ModelAdvisor onBack={() => setView('home')} />
-      </div>
-    )
-  }
+  const wrap = (children, active) => (
+    <div className="min-h-screen bg-slate-900">
+      <NavBar active={active} />
+      <AuthModal open={authModalOpen} onClose={() => setAuthModalOpen(false)} lang={lang} reason={authReason} />
+      {children}
+    </div>
+  )
 
-  if (view === 'optimizer') {
-    return (
-      <div className="min-h-screen bg-slate-900">
-        <NavBar active="optimizer" />
-        <TokenOptimizer />
-      </div>
-    )
-  }
+  if (view === 'advisor')   return wrap(<ModelAdvisor onBack={() => setView('home')} />, 'advisor')
+  if (view === 'optimizer') return wrap(<TokenOptimizer />, 'optimizer')
 
   if (view === 'events') {
-    return (
-      <div className="min-h-screen bg-slate-900">
-        <NavBar active="events" />
-        {selectedEventId ? (
-          <EventDetail
-            kind={eventsKind}
-            id={selectedEventId}
-            lang={lang}
-            onBack={() => setSelectedEventId(null)}
-          />
-        ) : eventsKind ? (
-          <EventsList
-            kind={eventsKind}
-            lang={lang}
-            onBack={() => setEventsKind(null)}
-            onSelect={(id) => setSelectedEventId(id)}
-          />
-        ) : (
-          <EventsHome lang={lang} onSelectKind={(k) => setEventsKind(k)} />
-        )}
-      </div>
+    return wrap(
+      selectedEventId ? (
+        <EventDetail kind={eventsKind} id={selectedEventId} lang={lang}
+          onBack={() => setSelectedEventId(null)} />
+      ) : eventsKind ? (
+        <EventsList kind={eventsKind} lang={lang}
+          onBack={() => setEventsKind(null)}
+          onSelect={(id) => setSelectedEventId(id)} />
+      ) : (
+        <EventsHome lang={lang} onSelectKind={(k) => setEventsKind(k)} />
+      ),
+      'events'
     )
   }
 
-  return (
-    <div className="min-h-screen bg-slate-900 px-4 py-8">
-      <NavBar active="home" />
+  return wrap(
+    <div className="px-4 py-8">
       <div className="max-w-5xl mx-auto mb-12 mt-6">
         <motion.h1 initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}
           className="text-4xl md:text-5xl font-bold text-white mb-4 leading-tight">
@@ -187,11 +210,12 @@ export default function App() {
             key={mod.id}
             module={mod}
             progress={getModuleProgress(mod.id)}
-            onStart={() => setActiveModule(mod)}
+            onStart={() => startModule(mod)}
             index={i}
           />
         ))}
       </div>
-    </div>
+    </div>,
+    'home'
   )
 }
