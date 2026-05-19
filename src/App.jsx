@@ -8,6 +8,7 @@ import EventsHome from './components/EventsHome'
 import EventsList from './components/EventsList'
 import EventDetail from './components/EventDetail'
 import AuthModal from './components/AuthModal'
+import ProfileView from './components/ProfileView'
 import ModelAdvisor from './tools/model-advisor/ModelAdvisor'
 import TokenOptimizer from './tools/TokenOptimizer'
 import { useProgress } from './hooks/useProgress'
@@ -51,6 +52,9 @@ export default function App() {
   const eventsMenuRef = useRef(null)
   const userMenuRef   = useRef(null)
 
+  // Detect incomplete profile after auth completes
+  const profileIncomplete = Boolean(user && profile && (!profile.name || !profile.team))
+
   useEffect(() => {
     const handleClick = (e) => {
       if (eventsMenuRef.current && !eventsMenuRef.current.contains(e.target)) setEventsMenuOpen(false)
@@ -62,6 +66,10 @@ export default function App() {
 
   const goToEvents = (kind) => {
     setView('events'); setEventsKind(kind); setSelectedEventId(null); setEventsMenuOpen(false)
+  }
+
+  const goToProfile = () => {
+    setView('profile'); setUserMenuOpen(false); setEventsKind(null); setSelectedEventId(null)
   }
 
   const startModule = (mod) => {
@@ -125,19 +133,33 @@ export default function App() {
         {!authLoading && (user ? (
           <div className="relative" ref={userMenuRef}>
             <button onClick={() => setUserMenuOpen((o) => !o)}
-              className="px-3 py-1 rounded-full text-sm font-medium text-slate-300 hover:text-white bg-slate-800 hover:bg-slate-700 transition-all flex items-center gap-1">
+              className={`px-3 py-1 rounded-full text-sm font-medium transition-all flex items-center gap-1 ${
+                active === 'profile'
+                  ? 'bg-blue-600 text-white'
+                  : 'text-slate-300 hover:text-white bg-slate-800 hover:bg-slate-700'
+              }`}>
               {USER} <span className="hidden sm:inline max-w-[140px] truncate">{profile?.name || user.email}</span>
+              {profileIncomplete && (
+                <span className="w-1.5 h-1.5 rounded-full bg-amber-400 ml-0.5" aria-label="profile incomplete" />
+              )}
               <span className="text-[10px] opacity-70">▾</span>
             </button>
             {userMenuOpen && (
               <div className="absolute right-0 mt-2 w-60 rounded-xl bg-slate-800 ring-1 ring-slate-700 shadow-xl overflow-hidden z-50">
                 <div className="px-4 py-3 border-b border-slate-700/60">
-                  <div className="text-sm font-medium text-white truncate">{profile?.name || (lang === 'es' ? 'Sin nombre' : 'No name')}</div>
+                  <div className="text-sm font-medium text-white truncate">
+                    {profile?.name || (lang === 'es' ? 'Sin nombre' : 'No name')}
+                  </div>
                   <div className="text-[11px] text-slate-400 truncate">{user.email}</div>
                   {profile?.team && <div className="text-[11px] text-slate-500 truncate mt-1">{profile.team}</div>}
                 </div>
+                <button onClick={goToProfile}
+                  className="w-full text-left px-4 py-3 text-sm text-slate-200 hover:bg-slate-700 transition-colors flex items-center justify-between">
+                  <span>{lang === 'es' ? 'Mi perfil' : 'My profile'}</span>
+                  {profileIncomplete && <span className="text-[10px] text-amber-300">•</span>}
+                </button>
                 <button onClick={() => { signOut(); setUserMenuOpen(false) }}
-                  className="w-full text-left px-4 py-3 text-sm text-slate-200 hover:bg-slate-700 transition-colors">
+                  className="w-full text-left px-4 py-3 text-sm text-slate-200 hover:bg-slate-700 transition-colors border-t border-slate-700/60">
                   {lang === 'es' ? 'Cerrar sesión' : 'Sign out'}
                 </button>
               </div>
@@ -165,16 +187,35 @@ export default function App() {
     )
   }
 
+  // Banner that appears on top of any view when profile is incomplete
+  const IncompleteBanner = () => (profileIncomplete && view !== 'profile') ? (
+    <div className="max-w-5xl mx-auto px-4 -mt-2 mb-4">
+      <button onClick={goToProfile}
+        className="w-full p-3 rounded-xl bg-amber-500/10 ring-1 ring-amber-500/40 text-amber-200 text-sm flex items-center justify-between hover:bg-amber-500/15 transition-colors">
+        <span>
+          ⚠️ {lang === 'es'
+            ? 'Tu perfil está incompleto. Agregá tu nombre y equipo.'
+            : 'Your profile is incomplete. Add your name and team.'}
+        </span>
+        <span className="text-amber-100 font-medium">
+          {lang === 'es' ? 'Completar →' : 'Complete →'}
+        </span>
+      </button>
+    </div>
+  ) : null
+
   const wrap = (children, active) => (
     <div className="min-h-screen bg-slate-900">
       <NavBar active={active} />
       <AuthModal open={authModalOpen} onClose={() => setAuthModalOpen(false)} lang={lang} reason={authReason} />
+      <IncompleteBanner />
       {children}
     </div>
   )
 
   if (view === 'advisor')   return wrap(<ModelAdvisor onBack={() => setView('home')} />, 'advisor')
   if (view === 'optimizer') return wrap(<TokenOptimizer />, 'optimizer')
+  if (view === 'profile')   return wrap(<ProfileView lang={lang} onBack={() => setView('home')} />, 'profile')
 
   if (view === 'events') {
     return wrap(
