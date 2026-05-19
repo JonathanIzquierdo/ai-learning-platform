@@ -54,12 +54,16 @@ export function AuthProvider({ children }) {
     }
 
     const loadAdmin = async () => {
-      const { data } = await supabase
-        .from('admins')
-        .select('email')
-        .eq('email', session.user.email)
-        .maybeSingle()
+      // Use RPC to is_admin() because direct SELECT on public.admins
+      // is restricted by RLS (only admins can read admins). The RPC is
+      // SECURITY DEFINER and safely returns a boolean for any signed-in user.
+      const { data, error } = await supabase.rpc('is_admin')
       if (cancelled) return
+      if (error) {
+        console.warn('[auth] is_admin RPC failed', error)
+        setIsAdmin(false)
+        return
+      }
       setIsAdmin(Boolean(data))
     }
 
