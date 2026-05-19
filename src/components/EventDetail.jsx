@@ -10,6 +10,7 @@ export default function EventDetail({ kind, id, lang, onBack }) {
   const [name, setName] = useState('')
   const [team, setTeam] = useState('')
   const [note, setNote] = useState('')
+  const [copied, setCopied] = useState(false)
 
   if (!item) return null
 
@@ -28,14 +29,19 @@ export default function EventDetail({ kind, id, lang, onBack }) {
       requestTalk: 'Request this talk',
       moreInfo: 'For more information, contact',
       formTitle: 'Request this talk',
-      formSubtitle: 'We’ll send an email to Jonathan with your details so he can get back to you.',
+      formSubtitle: 'Fill in your details and pick how you want to send the request.',
       yourEmail: 'Your email',
       yourName: 'Your name',
       yourTeam: 'Team / Area (optional)',
       yourNote: 'Anything else? (optional)',
-      send: 'Open email client',
+      sendGmail: 'Send via Gmail',
+      sendMail: 'Open in mail client',
+      copy: 'Copy email text',
+      copied: 'Copied to clipboard ✓',
       cancel: 'Cancel',
-      hint: 'This opens your email client with everything pre-filled. You just hit send.'
+      hint: 'Use Gmail if your work email is on Google. Use “mail client” for Outlook/Apple Mail. Or copy the text and paste it anywhere.',
+      emailToCopy: 'To',
+      subjectToCopy: 'Subject'
     },
     es: {
       back: '← Volver',
@@ -51,14 +57,19 @@ export default function EventDetail({ kind, id, lang, onBack }) {
       requestTalk: 'Solicitar esta charla',
       moreInfo: 'Para más información, contactar a',
       formTitle: 'Solicitar esta charla',
-      formSubtitle: 'Vamos a enviar un email a Jonathan con tus datos para que se contacte con vos.',
+      formSubtitle: 'Completá tus datos y elegí cómo querés enviar la solicitud.',
       yourEmail: 'Tu email',
       yourName: 'Tu nombre',
       yourTeam: 'Equipo / Área (opcional)',
       yourNote: '¿Algo más? (opcional)',
-      send: 'Abrir cliente de email',
+      sendGmail: 'Enviar por Gmail',
+      sendMail: 'Abrir en cliente de email',
+      copy: 'Copiar texto del email',
+      copied: 'Copiado al portapapeles ✓',
       cancel: 'Cancelar',
-      hint: 'Esto abre tu cliente de email con todo prellenado. Sólo apretás enviar.'
+      hint: 'Usá Gmail si tu correo corporativo es de Google. Usá “cliente de email” para Outlook/Apple Mail. O copiá el texto y pegalo donde quieras.',
+      emailToCopy: 'Para',
+      subjectToCopy: 'Asunto'
     }
   }[lang]
 
@@ -66,7 +77,8 @@ export default function EventDetail({ kind, id, lang, onBack }) {
     if (item.requestUrl) window.open(item.requestUrl, '_blank', 'noopener')
   }
 
-  const buildMailto = () => {
+  // ---- Mensaje base ---------------------------------------------------------
+  const buildEmailParts = () => {
     const title = item.title[lang]
     const subject = lang === 'es'
       ? `Solicitud de charla: ${title}`
@@ -74,13 +86,60 @@ export default function EventDetail({ kind, id, lang, onBack }) {
     const body = lang === 'es'
       ? `Hola Jonathan,\n\nMe interesa la charla: "${title}".\n\nDatos de contacto:\n• Nombre: ${name || '(no indicado)'}\n• Email: ${email}\n• Equipo / Área: ${team || '(no indicado)'}\n\nComentarios:\n${note || '(sin comentarios)'}\n\n¿Podríamos coordinar una sesión?\n\nGracias!`
       : `Hi Jonathan,\n\nI'm interested in the talk: "${title}".\n\nContact info:\n• Name: ${name || '(not provided)'}\n• Email: ${email}\n• Team / Area: ${team || '(not provided)'}\n\nNotes:\n${note || '(no notes)'}\n\nCould we coordinate a session?\n\nThanks!`
+    return { subject, body }
+  }
+
+  // ---- Gmail compose URL (funciona en gmail web) ----------------------------
+  const buildGmailUrl = () => {
+    const { subject, body } = buildEmailParts()
+    const params = new URLSearchParams({
+      view: 'cm',
+      fs: '1',
+      to: CONTACT_EMAIL,
+      su: subject,
+      body: body,
+      cc: email
+    })
+    return `https://mail.google.com/mail/?${params.toString()}`
+  }
+
+  // ---- mailto fallback (Outlook / Apple Mail / cliente nativo) --------------
+  const buildMailto = () => {
+    const { subject, body } = buildEmailParts()
     return `mailto:${CONTACT_EMAIL}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}&cc=${encodeURIComponent(email)}`
   }
 
-  const handleSendTalk = (e) => {
+  // ---- Handlers de envío ----------------------------------------------------
+  const handleSendGmail = (e) => {
     e.preventDefault()
     if (!email) return
+    window.open(buildGmailUrl(), '_blank', 'noopener')
+  }
+
+  const handleSendMailto = () => {
+    if (!email) return
     window.location.href = buildMailto()
+  }
+
+  const handleCopy = async () => {
+    if (!email) return
+    const { subject, body } = buildEmailParts()
+    const text = `${t.emailToCopy}: ${CONTACT_EMAIL}\n${t.subjectToCopy}: ${subject}\n\n${body}`
+    try {
+      await navigator.clipboard.writeText(text)
+      setCopied(true)
+      setTimeout(() => setCopied(false), 2200)
+    } catch {
+      // fallback ultra-defensivo si clipboard API no está disponible
+      const ta = document.createElement('textarea')
+      ta.value = text
+      document.body.appendChild(ta)
+      ta.select()
+      try { document.execCommand('copy') } catch { /* noop */ }
+      document.body.removeChild(ta)
+      setCopied(true)
+      setTimeout(() => setCopied(false), 2200)
+    }
   }
 
   const isWorkshop = kind === 'workshops'
@@ -231,10 +290,11 @@ export default function EventDetail({ kind, id, lang, onBack }) {
           </div>
         ) : (
           <motion.form initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}
-            onSubmit={handleSendTalk}
+            onSubmit={handleSendGmail}
             className="p-6 rounded-xl bg-slate-800/60 ring-1 ring-slate-700/60">
             <h3 className="text-xl font-bold text-white mb-1">{t.formTitle}</h3>
             <p className="text-sm text-slate-400 mb-5">{t.formSubtitle}</p>
+
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-3">
               <input type="email" required value={email} onChange={(e) => setEmail(e.target.value)}
                 placeholder={t.yourEmail}
@@ -249,18 +309,31 @@ export default function EventDetail({ kind, id, lang, onBack }) {
             <textarea value={note} onChange={(e) => setNote(e.target.value)}
               placeholder={t.yourNote} rows={3}
               className="w-full px-4 py-3 rounded-lg bg-slate-900 text-white ring-1 ring-slate-700 focus:ring-2 focus:ring-blue-500 outline-none mb-2 resize-none" />
-            <p className="text-xs text-slate-500 mb-4">{t.hint}</p>
-            <div className="flex gap-3">
-              <button type="submit"
-                className="flex-1 px-6 py-3 rounded-lg font-bold text-white transition-all hover:opacity-90"
-                style={{ background: item.color }}>
-                {t.send} →
+            <p className="text-xs text-slate-500 mb-5">{t.hint}</p>
+
+            {/* Primario: Gmail */}
+            <button type="submit" disabled={!email}
+              className="w-full px-6 py-3 rounded-lg font-bold text-white transition-all hover:opacity-90 disabled:opacity-40 disabled:cursor-not-allowed mb-3 flex items-center justify-center gap-2"
+              style={{ background: item.color }}>
+              <span aria-hidden>✉️</span> {t.sendGmail} →
+            </button>
+
+            {/* Secundario: mailto + copiar */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mb-3">
+              <button type="button" onClick={handleSendMailto} disabled={!email}
+                className="px-4 py-2.5 rounded-lg font-medium text-slate-200 bg-slate-900/60 ring-1 ring-slate-700 hover:ring-slate-500 hover:text-white transition-all disabled:opacity-40 disabled:cursor-not-allowed text-sm">
+                {t.sendMail}
               </button>
-              <button type="button" onClick={() => setFormOpen(false)}
-                className="px-6 py-3 rounded-lg font-medium text-slate-300 hover:text-white transition-colors">
-                {t.cancel}
+              <button type="button" onClick={handleCopy} disabled={!email}
+                className="px-4 py-2.5 rounded-lg font-medium text-slate-200 bg-slate-900/60 ring-1 ring-slate-700 hover:ring-slate-500 hover:text-white transition-all disabled:opacity-40 disabled:cursor-not-allowed text-sm">
+                {copied ? t.copied : t.copy}
               </button>
             </div>
+
+            <button type="button" onClick={() => setFormOpen(false)}
+              className="w-full px-6 py-2 rounded-lg font-medium text-slate-400 hover:text-white transition-colors text-sm">
+              {t.cancel}
+            </button>
           </motion.form>
         )}
       </motion.div>
