@@ -9,13 +9,22 @@ import { isSupabaseReady, ALLOWED_DOMAINS } from '../lib/supabase'
 // behind a strong blur + dark overlay and shows a centered access panel.
 //
 // Auth flow (2-step OTP, same tab):
-//   1. User types email      → requestOtpCode → email sent with a 6-digit code
-//   2. User types code (6d.) → verifyOtpCode  → SIGNED_IN
+//   1. User types email      → requestOtpCode → email sent with a numeric code
+//   2. User types the code   → verifyOtpCode  → SIGNED_IN
 //   3. justSignedIn flips    → 3s of confetti rain + blur fades 12px → 0px
 //   4. From then on, no further prompts until the browser session ends.
+//
+// The code length must match what Supabase is configured to send (this project
+// is on 8). If you change it in Supabase Dashboard → Auth → Providers → Email,
+// update OTP_LENGTH below to match.
 // ──────────────────────────────────────────────────────────────────────────
 
-const REVEAL_MS = 3000
+const REVEAL_MS  = 3000
+const OTP_LENGTH = 8
+
+// Build the visual placeholder ("00000000") and a copy-friendly textual form
+// ("8-digit") from OTP_LENGTH so every reference to length stays in sync.
+const OTP_PLACEHOLDER = '0'.repeat(OTP_LENGTH)
 
 const COPY = {
   en: {
@@ -27,8 +36,8 @@ const COPY = {
     sendCode:   'Send code',
     sending:    'Sending…',
     codeStepTitle: 'Enter your code',
-    codeStepBody:  'We sent a 6-digit code to {email}. Paste or type it below — it expires in 10 minutes.',
-    codeLabel:  '6-digit code',
+    codeStepBody:  `We sent a ${OTP_LENGTH}-digit code to {email}. Paste or type it below — it expires in 10 minutes.`,
+    codeLabel:  `${OTP_LENGTH}-digit code`,
     verify:     'Verify and enter',
     verifying:  'Verifying…',
     again:      'Use a different email',
@@ -48,8 +57,8 @@ const COPY = {
     sendCode:   'Enviar código',
     sending:    'Enviando…',
     codeStepTitle: 'Ingresá el código',
-    codeStepBody:  'Te enviamos un código de 6 dígitos a {email}. Pegalo o escribilo abajo — expira en 10 minutos.',
-    codeLabel:  'Código de 6 dígitos',
+    codeStepBody:  `Te enviamos un código de ${OTP_LENGTH} dígitos a {email}. Pegalo o escribilo abajo — expira en 10 minutos.`,
+    codeLabel:  `Código de ${OTP_LENGTH} dígitos`,
     verify:     'Verificar y entrar',
     verifying:  'Verificando…',
     again:      'Usar otro email',
@@ -180,7 +189,7 @@ export default function AccessGate({ children, lang = 'en' }) {
 
   const handleVerify = async (codeArg) => {
     const finalCode = (codeArg ?? code).replace(/\D/g, '')
-    if (finalCode.length !== 6) return
+    if (finalCode.length !== OTP_LENGTH) return
     setStatus('verifying'); setErrorMsg('')
     const { error } = await verifyOtpCode(email, finalCode)
     if (error) {
@@ -196,12 +205,12 @@ export default function AccessGate({ children, lang = 'en' }) {
   }
 
   const handleCodeChange = (raw) => {
-    // strip non-digits, cap at 6
-    const clean = raw.replace(/\D/g, '').slice(0, 6)
+    // strip non-digits, cap at OTP_LENGTH
+    const clean = raw.replace(/\D/g, '').slice(0, OTP_LENGTH)
     setCode(clean)
     if (errorMsg) { setErrorMsg(''); setStatus('idle') }
-    // auto-submit once we hit 6 digits
-    if (clean.length === 6) {
+    // auto-submit once we hit the full code length
+    if (clean.length === OTP_LENGTH) {
       handleVerify(clean)
     }
   }
@@ -381,19 +390,21 @@ export default function AccessGate({ children, lang = 'en' }) {
                           inputMode="numeric"
                           autoComplete="one-time-code"
                           pattern="[0-9]*"
-                          maxLength={6}
+                          maxLength={OTP_LENGTH}
                           value={code}
                           onChange={(e) => handleCodeChange(e.target.value)}
-                          placeholder="000000"
+                          placeholder={OTP_PLACEHOLDER}
                           disabled={isVerifying}
-                          className="w-full px-4 py-4 rounded-lg bg-slate-800 text-white ring-1 ring-slate-700 focus:ring-2 focus:ring-blue-500 outline-none text-center text-3xl font-mono tracking-[0.5em] tabular-nums disabled:opacity-60"
+                          // Tighter letter-spacing for 8 chars so it still fits
+                          // comfortably on mobile (max-w-md panel).
+                          className="w-full px-4 py-4 rounded-lg bg-slate-800 text-white ring-1 ring-slate-700 focus:ring-2 focus:ring-blue-500 outline-none text-center text-2xl sm:text-3xl font-mono tracking-[0.35em] tabular-nums disabled:opacity-60"
                         />
                       </div>
 
                       <button
                         type="button"
                         onClick={() => handleVerify()}
-                        disabled={code.length !== 6 || isVerifying}
+                        disabled={code.length !== OTP_LENGTH || isVerifying}
                         className="w-full mt-2 px-6 py-3 rounded-lg font-bold text-white bg-blue-600 hover:bg-blue-700 transition-all disabled:opacity-40 disabled:cursor-not-allowed"
                       >
                         {isVerifying ? t.verifying : t.verify + ' →'}
