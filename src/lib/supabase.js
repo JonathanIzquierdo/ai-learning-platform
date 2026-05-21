@@ -11,13 +11,24 @@ if (!supabaseUrl || !supabaseAnonKey) {
   )
 }
 
+// Use sessionStorage instead of the default localStorage so that the AccessGate
+// is shown again whenever the user opens a brand-new browser session (closing
+// every tab/window of the site clears the session). Inside the same session,
+// the user navigates everything (modules, events, etc.) without being asked
+// for the email again — the magic-link redirect lands them already authenticated.
+const safeSessionStorage = (typeof window !== 'undefined' && window.sessionStorage)
+  ? window.sessionStorage
+  : undefined
+
 export const supabase = (supabaseUrl && supabaseAnonKey)
   ? createClient(supabaseUrl, supabaseAnonKey, {
       auth: {
         persistSession: true,
         autoRefreshToken: true,
         detectSessionInUrl: true,
-        flowType: 'pkce'
+        flowType: 'pkce',
+        storage: safeSessionStorage,
+        storageKey: 'visma-ai-learning-auth'
       }
     })
   : null
