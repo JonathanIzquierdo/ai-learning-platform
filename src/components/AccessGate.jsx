@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useAuth } from '../lib/auth'
 import { isSupabaseReady, ALLOWED_DOMAINS } from '../lib/supabase'
@@ -22,9 +22,37 @@ import { isSupabaseReady, ALLOWED_DOMAINS } from '../lib/supabase'
 const REVEAL_MS  = 3000
 const OTP_LENGTH = 8
 
-// Build the visual placeholder ("00000000") and a copy-friendly textual form
-// ("8-digit") from OTP_LENGTH so every reference to length stays in sync.
 const OTP_PLACEHOLDER = '0'.repeat(OTP_LENGTH)
+
+// canvas-confetti is loaded on demand via CDN by ModulePlayer when a module
+// is completed. We mirror that pattern here so the gate doesn't require the
+// library to be already on the page — we kick off the load as soon as the
+// gate mounts (well before the user might verify), so the animation is ready.
+const CONFETTI_SRC = 'https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.2/dist/confetti.browser.min.js'
+
+function ensureConfettiLoaded() {
+  if (typeof window === 'undefined') return Promise.resolve(null)
+  if (window.confetti) return Promise.resolve(window.confetti)
+  // If a previous loader already started, reuse it.
+  if (window.__confettiLoadingPromise) return window.__confettiLoadingPromise
+
+  window.__confettiLoadingPromise = new Promise((resolve) => {
+    const existing = document.querySelector(`script[src="${CONFETTI_SRC}"]`)
+    if (existing) {
+      // Script tag already in DOM but might still be loading — listen for it.
+      existing.addEventListener('load', () => resolve(window.confetti || null))
+      existing.addEventListener('error', () => resolve(null))
+      return
+    }
+    const script = document.createElement('script')
+    script.src = CONFETTI_SRC
+    script.async = true
+    script.onload  = () => resolve(window.confetti || null)
+    script.onerror = () => resolve(null)
+    document.head.appendChild(script)
+  })
+  return window.__confettiLoadingPromise
+}
 
 const COPY = {
   en: {
@@ -72,9 +100,8 @@ const COPY = {
 }
 
 // Drop a few cascading confetti bursts from the top of the screen for `ms`.
-// We treat canvas-confetti as optional — if it's missing we skip silently.
-function rainConfetti(ms = REVEAL_MS) {
-  const confetti = typeof window !== 'undefined' ? window.confetti : null
+// We treat canvas-confetti as optional — if the loader failed we skip silently.
+function rainConfetti(confetti, ms = REVEAL_MS) {
   if (!confetti) return
 
   const end = Date.now() + ms
@@ -94,7 +121,8 @@ function rainConfetti(ms = REVEAL_MS) {
       origin: { x: Math.random(), y: -0.05 },
       colors,
       scalar: 1.05,
-      shapes: ['square', 'circle']
+      shapes: ['square', 'circle'],
+      zIndex: 9999
     })
     requestAnimationFrame(tick)
   }
@@ -109,7 +137,8 @@ function rainConfetti(ms = REVEAL_MS) {
       startVelocity: 45,
       gravity: 0.9,
       origin: { x: 0, y: 0.4 },
-      colors
+      colors,
+      zIndex: 9999
     })
     confetti({
       particleCount: 80,
@@ -118,7 +147,8 @@ function rainConfetti(ms = REVEAL_MS) {
       startVelocity: 45,
       gravity: 0.9,
       origin: { x: 1, y: 0.4 },
-      colors
+      colors,
+      zIndex: 9999
     })
   }, 100)
 }
@@ -146,25 +176,41 @@ export default function AccessGate({ children, lang = 'en' }) {
   const t = COPY[lang] || COPY.en
   const domainsLabel = ALLOWED_DOMAINS.map((d) => '@' + d).join(', ')
 
-  // When the user transitions from "no session" to "session + justSignedIn",
-  // play the reveal animation once.
-  useEffect(() => {
+  // Preload canvas-confetti as soon as the gate mounts. By the time the user
+  // verifies their code (a few seconds at minimum), `window.confetti` will be
+  // ready — and the reveal won't silently skip the animation.
+  useEffect(() => { ensureConfettiLoaded() }, [])
+
+  // useLayoutEffect (not useEffect) so we flip `revealing=true` synchronously
+  // in the same frame that `user` first becomes truthy. Otherwise React can
+  // paint one frame with `user && !revealing` → returns children directly,
+  // bypassing the blurred reveal entirely (this is exactly what caused the
+  // "blur was too fast" symptom — the animated wrapper got skipped).
+  useLayoutEffect(() => {
     if (user && justSignedIn && !revealStartedRef.current) {
       revealStartedRef.current = true
       setRevealing(true)
-      rainConfetti(REVEAL_MS)
-      const timer = setTimeout(() => {
-        setRevealing(false)
-        clearJustSignedIn()
-      }, REVEAL_MS)
-      return () => clearTimeout(timer)
     }
-  }, [user, justSignedIn, clearJustSignedIn])
+  }, [user, justSignedIn])
+
+  // Side effects of the reveal: confetti + auto-clear after REVEAL_MS.
+  useEffect(() => {
+    if (!revealing) return
+    let cancelled = false
+    ensureConfettiLoaded().then((confetti) => {
+      if (cancelled) return
+      rainConfetti(confetti, REVEAL_MS)
+    })
+    const timer = setTimeout(() => {
+      setRevealing(false)
+      clearJustSignedIn()
+    }, REVEAL_MS)
+    return () => { cancelled = true; clearTimeout(timer) }
+  }, [revealing, clearJustSignedIn])
 
   // Focus the code input when we move to step 2
   useEffect(() => {
     if (step === 'code' && codeInputRef.current) {
-      // small delay to wait for the animation frame
       const id = setTimeout(() => codeInputRef.current?.focus(), 50)
       return () => clearTimeout(id)
     }
@@ -197,19 +243,15 @@ export default function AccessGate({ children, lang = 'en' }) {
       setErrorMsg(error.message?.toLowerCase().includes('invalid')
         ? t.invalidCode
         : (error.message || t.invalidCode))
-      // keep value so user can correct
     } else {
-      // success — SIGNED_IN will flip via onAuthStateChange and trigger reveal
       setStatus('idle')
     }
   }
 
   const handleCodeChange = (raw) => {
-    // strip non-digits, cap at OTP_LENGTH
     const clean = raw.replace(/\D/g, '').slice(0, OTP_LENGTH)
     setCode(clean)
     if (errorMsg) { setErrorMsg(''); setStatus('idle') }
-    // auto-submit once we hit the full code length
     if (clean.length === OTP_LENGTH) {
       handleVerify(clean)
     }
@@ -241,11 +283,20 @@ export default function AccessGate({ children, lang = 'en' }) {
   }
 
   // Authenticated AND not in the middle of the reveal → show the app crisp.
+  // This MUST come after the layout effect above has had a chance to flip
+  // `revealing` to true, otherwise the animated wrapper is bypassed.
   if (user && !revealing) {
     return children
   }
 
   const showGate = !user
+
+  // The wrapper's blur target depends on which phase we're in:
+  //   - Gate visible (no user): hold at 12px blur (no animation).
+  //   - Revealing (user just signed in): animate 12px → 0px over REVEAL_MS.
+  // We deliberately do NOT set `filter` in `style` because inline styles
+  // override Framer Motion's animated values.
+  const blurTarget = showGate ? 'blur(12px)' : 'blur(0px)'
   const isSending   = status === 'sending'
   const isVerifying = status === 'verifying'
 
@@ -254,17 +305,17 @@ export default function AccessGate({ children, lang = 'en' }) {
       {/* Underlying app — always rendered so the reveal can animate over it */}
       <motion.div
         aria-hidden={showGate}
-        initial={false}
-        animate={{
-          filter: showGate ? 'blur(12px)' : 'blur(0px)',
-        }}
+        // Start blurred on first paint so the gate never reveals the app.
+        initial={{ filter: 'blur(12px)' }}
+        animate={{ filter: blurTarget }}
         transition={{
           duration: revealing ? REVEAL_MS / 1000 : 0,
-          ease: 'easeOut'
+          ease: [0.16, 1, 0.3, 1] // a smooth "ease-out-expo"-ish curve
         }}
         style={{
           pointerEvents: showGate ? 'none' : 'auto',
-          filter: showGate ? 'blur(12px)' : undefined,
+          // Hint to the browser that this transform/filter combo is animated.
+          willChange: revealing ? 'filter' : 'auto',
           transformOrigin: 'center top'
         }}
         className="min-h-screen"
@@ -395,8 +446,6 @@ export default function AccessGate({ children, lang = 'en' }) {
                           onChange={(e) => handleCodeChange(e.target.value)}
                           placeholder={OTP_PLACEHOLDER}
                           disabled={isVerifying}
-                          // Tighter letter-spacing for 8 chars so it still fits
-                          // comfortably on mobile (max-w-md panel).
                           className="w-full px-4 py-4 rounded-lg bg-slate-800 text-white ring-1 ring-slate-700 focus:ring-2 focus:ring-blue-500 outline-none text-center text-2xl sm:text-3xl font-mono tracking-[0.35em] tabular-nums disabled:opacity-60"
                         />
                       </div>
