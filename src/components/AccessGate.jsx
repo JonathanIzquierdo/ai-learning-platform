@@ -6,11 +6,13 @@ import { isSupabaseReady, ALLOWED_DOMAINS } from '../lib/supabase'
 // ──────────────────────────────────────────────────────────────────────────
 // AccessGate
 // Wraps the whole app. While there is no session, it renders the children
-// behind a strong blur + dark overlay and shows a centered email panel.
-// Once Supabase fires SIGNED_IN (after the magic-link redirect), `justSignedIn`
-// flips to true and we play a 3-second confetti "paper rain" while the blur
-// fades from 12px → 0px. From then on, children are shown crisp without
-// asking the user for anything again — until the browser session ends.
+// behind a strong blur + dark overlay and shows a centered access panel.
+//
+// Auth flow (2-step OTP, same tab):
+//   1. User types email      → requestOtpCode → email sent with a 6-digit code
+//   2. User types code (6d.) → verifyOtpCode  → SIGNED_IN
+//   3. justSignedIn flips    → 3s of confetti rain + blur fades 12px → 0px
+//   4. From then on, no further prompts until the browser session ends.
 // ──────────────────────────────────────────────────────────────────────────
 
 const REVEAL_MS = 3000
@@ -22,15 +24,20 @@ const COPY = {
     emailLabel: 'Email',
     nameLabel:  'Name (optional)',
     teamLabel:  'Team / Area (optional)',
-    send:       'Get access',
+    sendCode:   'Send code',
     sending:    'Sending…',
-    sentTitle:  'Check your inbox',
-    sentBody:   'We sent a magic link to {email}. Open it from this browser to come back in.',
+    codeStepTitle: 'Enter your code',
+    codeStepBody:  'We sent a 6-digit code to {email}. Paste or type it below — it expires in 10 minutes.',
+    codeLabel:  '6-digit code',
+    verify:     'Verify and enter',
+    verifying:  'Verifying…',
     again:      'Use a different email',
+    resend:     'Resend code',
     onlyDomain: 'Only emails from {domains} are allowed.',
-    footer:     'No password. One-time link, expires in 1 hour.',
+    footer:     'No password. One-time code, expires in 10 minutes.',
     configError:'Sign-in is not configured. Contact the project owner.',
-    reveal:     'Access granted'
+    reveal:     'Access granted',
+    invalidCode:'Invalid or expired code. Please try again.'
   },
   es: {
     title: 'Bienvenido a la Plataforma de Aprendizaje de IA',
@@ -38,15 +45,20 @@ const COPY = {
     emailLabel: 'Email',
     nameLabel:  'Nombre (opcional)',
     teamLabel:  'Equipo / Área (opcional)',
-    send:       'Obtener acceso',
+    sendCode:   'Enviar código',
     sending:    'Enviando…',
-    sentTitle:  'Revisá tu bandeja',
-    sentBody:   'Te enviamos un enlace mágico a {email}. Abrilo desde este navegador para entrar.',
+    codeStepTitle: 'Ingresá el código',
+    codeStepBody:  'Te enviamos un código de 6 dígitos a {email}. Pegalo o escribilo abajo — expira en 10 minutos.',
+    codeLabel:  'Código de 6 dígitos',
+    verify:     'Verificar y entrar',
+    verifying:  'Verificando…',
     again:      'Usar otro email',
+    resend:     'Reenviar código',
     onlyDomain: 'Sólo se permiten emails de {domains}.',
-    footer:     'Sin contraseña. Enlace de un solo uso, expira en 1 hora.',
+    footer:     'Sin contraseña. Código de un solo uso, expira en 10 minutos.',
     configError:'El inicio de sesión no está configurado. Contactá al owner del proyecto.',
-    reveal:     'Acceso concedido'
+    reveal:     'Acceso concedido',
+    invalidCode:'Código inválido o expirado. Probá de nuevo.'
   }
 }
 
@@ -103,14 +115,24 @@ function rainConfetti(ms = REVEAL_MS) {
 }
 
 export default function AccessGate({ children, lang = 'en' }) {
-  const { user, loading, justSignedIn, clearJustSignedIn, signInWithMagicLink } = useAuth()
+  const {
+    user, loading, justSignedIn, clearJustSignedIn,
+    requestOtpCode, verifyOtpCode
+  } = useAuth()
+
+  // Two-step OTP form state
+  const [step, setStep]   = useState('email') // 'email' | 'code'
   const [email, setEmail] = useState('')
   const [name, setName]   = useState('')
   const [team, setTeam]   = useState('')
-  const [status, setStatus] = useState('idle') // idle | sending | sent | error
+  const [code, setCode]   = useState('')
+  const [status, setStatus] = useState('idle') // idle | sending | verifying | error
   const [errorMsg, setErrorMsg] = useState('')
+
+  // Reveal animation state
   const [revealing, setRevealing] = useState(false)
   const revealStartedRef = useRef(false)
+  const codeInputRef = useRef(null)
 
   const t = COPY[lang] || COPY.en
   const domainsLabel = ALLOWED_DOMAINS.map((d) => '@' + d).join(', ')
@@ -130,20 +152,73 @@ export default function AccessGate({ children, lang = 'en' }) {
     }
   }, [user, justSignedIn, clearJustSignedIn])
 
-  const handleSubmit = async (e) => {
-    e.preventDefault()
+  // Focus the code input when we move to step 2
+  useEffect(() => {
+    if (step === 'code' && codeInputRef.current) {
+      // small delay to wait for the animation frame
+      const id = setTimeout(() => codeInputRef.current?.focus(), 50)
+      return () => clearTimeout(id)
+    }
+  }, [step])
+
+  const handleRequest = async (e) => {
+    e?.preventDefault?.()
     if (!isSupabaseReady()) {
       setStatus('error'); setErrorMsg(t.configError); return
     }
     if (!email) return
     setStatus('sending'); setErrorMsg('')
-    const { error } = await signInWithMagicLink(email, { name, team })
-    if (error) { setStatus('error'); setErrorMsg(error.message || 'Error') }
-    else setStatus('sent')
+    const { error } = await requestOtpCode(email, { name, team })
+    if (error) {
+      setStatus('error'); setErrorMsg(error.message || 'Error')
+    } else {
+      setStatus('idle')
+      setStep('code')
+      setCode('')
+    }
   }
 
-  const resetForm = () => {
-    setStatus('idle'); setErrorMsg(''); setEmail('')
+  const handleVerify = async (codeArg) => {
+    const finalCode = (codeArg ?? code).replace(/\D/g, '')
+    if (finalCode.length !== 6) return
+    setStatus('verifying'); setErrorMsg('')
+    const { error } = await verifyOtpCode(email, finalCode)
+    if (error) {
+      setStatus('error')
+      setErrorMsg(error.message?.toLowerCase().includes('invalid')
+        ? t.invalidCode
+        : (error.message || t.invalidCode))
+      // keep value so user can correct
+    } else {
+      // success — SIGNED_IN will flip via onAuthStateChange and trigger reveal
+      setStatus('idle')
+    }
+  }
+
+  const handleCodeChange = (raw) => {
+    // strip non-digits, cap at 6
+    const clean = raw.replace(/\D/g, '').slice(0, 6)
+    setCode(clean)
+    if (errorMsg) { setErrorMsg(''); setStatus('idle') }
+    // auto-submit once we hit 6 digits
+    if (clean.length === 6) {
+      handleVerify(clean)
+    }
+  }
+
+  const handleResend = async () => {
+    if (status === 'sending') return
+    setStatus('sending'); setErrorMsg('')
+    const { error } = await requestOtpCode(email, { name, team })
+    if (error) { setStatus('error'); setErrorMsg(error.message || 'Error') }
+    else { setStatus('idle'); setCode('') }
+  }
+
+  const resetToEmail = () => {
+    setStep('email')
+    setCode('')
+    setStatus('idle')
+    setErrorMsg('')
   }
 
   // Initial bootstrap — avoid the flash of "blurred → instant unblur" for
@@ -161,9 +236,9 @@ export default function AccessGate({ children, lang = 'en' }) {
     return children
   }
 
-  // Either: not authenticated (show gate) OR authenticated + revealing
-  // (show children with animated blur from 12px → 0 and confetti running).
   const showGate = !user
+  const isSending   = status === 'sending'
+  const isVerifying = status === 'verifying'
 
   return (
     <div className="relative min-h-screen bg-slate-900">
@@ -172,19 +247,15 @@ export default function AccessGate({ children, lang = 'en' }) {
         aria-hidden={showGate}
         initial={false}
         animate={{
-          filter: showGate ? 'blur(12px)' : (revealing ? 'blur(0px)' : 'blur(0px)'),
+          filter: showGate ? 'blur(12px)' : 'blur(0px)',
         }}
         transition={{
           duration: revealing ? REVEAL_MS / 1000 : 0,
           ease: 'easeOut'
         }}
         style={{
-          // When the gate is up, lock the app from being interacted with
-          // (the blur is purely visual; we also need to block clicks).
           pointerEvents: showGate ? 'none' : 'auto',
-          // Start from heavy blur if the gate is up so first paint is hidden.
           filter: showGate ? 'blur(12px)' : undefined,
-          // Slight scale gives the reveal a tiny "settle" without being flashy.
           transformOrigin: 'center top'
         }}
         className="min-h-screen"
@@ -192,7 +263,7 @@ export default function AccessGate({ children, lang = 'en' }) {
         {children}
       </motion.div>
 
-      {/* Dark overlay while the gate is up — softens the blurred app behind */}
+      {/* Dark overlay while the gate is up */}
       <AnimatePresence>
         {showGate && (
           <motion.div
@@ -218,79 +289,141 @@ export default function AccessGate({ children, lang = 'en' }) {
             className="fixed inset-0 z-50 flex items-center justify-center px-4"
           >
             <div className="w-full max-w-md bg-slate-900/95 ring-1 ring-slate-700 rounded-2xl p-8 shadow-2xl backdrop-blur-sm">
-              {status !== 'sent' ? (
-                <>
-                  <div className="flex items-center gap-2 mb-1">
-                    <span className="text-[10px] uppercase tracking-widest text-blue-400 font-bold">
-                      Visma · LATAM
-                    </span>
-                  </div>
-                  <h2 className="text-2xl font-bold text-white mb-2 leading-tight">
-                    {t.title}
-                  </h2>
-                  <p className="text-slate-400 text-sm mb-6">{t.subtitle}</p>
+              <div className="flex items-center gap-2 mb-1">
+                <span className="text-[10px] uppercase tracking-widest text-blue-400 font-bold">
+                  Visma · LATAM
+                </span>
+              </div>
 
-                  <form onSubmit={handleSubmit} className="space-y-3">
-                    <div>
-                      <label className="text-[10px] uppercase tracking-widest text-slate-400 mb-1 block">
-                        {t.emailLabel}
-                      </label>
-                      <input
-                        type="email" required value={email} autoFocus
-                        onChange={(e) => setEmail(e.target.value)}
-                        placeholder={`tu.nombre${domainsLabel.split(',')[0]}`}
-                        className="w-full px-4 py-3 rounded-lg bg-slate-800 text-white ring-1 ring-slate-700 focus:ring-2 focus:ring-blue-500 outline-none"
-                      />
-                    </div>
-                    <div className="grid grid-cols-2 gap-3">
-                      <div>
-                        <label className="text-[10px] uppercase tracking-widest text-slate-400 mb-1 block">{t.nameLabel}</label>
-                        <input
-                          type="text" value={name}
-                          onChange={(e) => setName(e.target.value)}
-                          className="w-full px-4 py-3 rounded-lg bg-slate-800 text-white ring-1 ring-slate-700 focus:ring-2 focus:ring-blue-500 outline-none"
-                        />
-                      </div>
-                      <div>
-                        <label className="text-[10px] uppercase tracking-widest text-slate-400 mb-1 block">{t.teamLabel}</label>
-                        <input
-                          type="text" value={team}
-                          onChange={(e) => setTeam(e.target.value)}
-                          className="w-full px-4 py-3 rounded-lg bg-slate-800 text-white ring-1 ring-slate-700 focus:ring-2 focus:ring-blue-500 outline-none"
-                        />
-                      </div>
-                    </div>
-
-                    <button
-                      type="submit" disabled={status === 'sending' || !email}
-                      className="w-full mt-2 px-6 py-3 rounded-lg font-bold text-white bg-blue-600 hover:bg-blue-700 transition-all disabled:opacity-40 disabled:cursor-not-allowed"
-                    >
-                      {status === 'sending' ? t.sending : t.send + ' →'}
-                    </button>
-
-                    {status === 'error' && (
-                      <p className="text-xs text-red-400 mt-2">{errorMsg}</p>
-                    )}
-                    <p className="text-[11px] text-slate-500 text-center mt-3">
-                      {t.onlyDomain.replace('{domains}', domainsLabel)} · {t.footer}
-                    </p>
-                  </form>
-                </>
-              ) : (
-                <div className="text-center py-4">
-                  <div className="text-5xl mb-4">📬</div>
-                  <h2 className="text-2xl font-bold text-white mb-3">{t.sentTitle}</h2>
-                  <p className="text-slate-400 text-sm mb-6 leading-relaxed">
-                    {t.sentBody.replace('{email}', email)}
-                  </p>
-                  <button
-                    onClick={resetForm}
-                    className="px-6 py-2.5 rounded-lg font-medium text-slate-300 hover:text-white bg-slate-800 transition-all"
+              <AnimatePresence mode="wait">
+                {step === 'email' ? (
+                  <motion.div
+                    key="step-email"
+                    initial={{ opacity: 0, x: -8 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    exit={{ opacity: 0, x: -8 }}
+                    transition={{ duration: 0.2 }}
                   >
-                    {t.again}
-                  </button>
-                </div>
-              )}
+                    <h2 className="text-2xl font-bold text-white mb-2 leading-tight">
+                      {t.title}
+                    </h2>
+                    <p className="text-slate-400 text-sm mb-6">{t.subtitle}</p>
+
+                    <form onSubmit={handleRequest} className="space-y-3">
+                      <div>
+                        <label className="text-[10px] uppercase tracking-widest text-slate-400 mb-1 block">
+                          {t.emailLabel}
+                        </label>
+                        <input
+                          type="email" required value={email} autoFocus
+                          onChange={(e) => setEmail(e.target.value)}
+                          placeholder={`tu.nombre${domainsLabel.split(',')[0]}`}
+                          className="w-full px-4 py-3 rounded-lg bg-slate-800 text-white ring-1 ring-slate-700 focus:ring-2 focus:ring-blue-500 outline-none"
+                        />
+                      </div>
+                      <div className="grid grid-cols-2 gap-3">
+                        <div>
+                          <label className="text-[10px] uppercase tracking-widest text-slate-400 mb-1 block">{t.nameLabel}</label>
+                          <input
+                            type="text" value={name}
+                            onChange={(e) => setName(e.target.value)}
+                            className="w-full px-4 py-3 rounded-lg bg-slate-800 text-white ring-1 ring-slate-700 focus:ring-2 focus:ring-blue-500 outline-none"
+                          />
+                        </div>
+                        <div>
+                          <label className="text-[10px] uppercase tracking-widest text-slate-400 mb-1 block">{t.teamLabel}</label>
+                          <input
+                            type="text" value={team}
+                            onChange={(e) => setTeam(e.target.value)}
+                            className="w-full px-4 py-3 rounded-lg bg-slate-800 text-white ring-1 ring-slate-700 focus:ring-2 focus:ring-blue-500 outline-none"
+                          />
+                        </div>
+                      </div>
+
+                      <button
+                        type="submit" disabled={isSending || !email}
+                        className="w-full mt-2 px-6 py-3 rounded-lg font-bold text-white bg-blue-600 hover:bg-blue-700 transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+                      >
+                        {isSending ? t.sending : t.sendCode + ' →'}
+                      </button>
+
+                      {status === 'error' && (
+                        <p className="text-xs text-red-400 mt-2">{errorMsg}</p>
+                      )}
+                      <p className="text-[11px] text-slate-500 text-center mt-3">
+                        {t.onlyDomain.replace('{domains}', domainsLabel)} · {t.footer}
+                      </p>
+                    </form>
+                  </motion.div>
+                ) : (
+                  <motion.div
+                    key="step-code"
+                    initial={{ opacity: 0, x: 8 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    exit={{ opacity: 0, x: 8 }}
+                    transition={{ duration: 0.2 }}
+                  >
+                    <h2 className="text-2xl font-bold text-white mb-2 leading-tight">
+                      {t.codeStepTitle}
+                    </h2>
+                    <p className="text-slate-400 text-sm mb-6 leading-relaxed">
+                      {t.codeStepBody.replace('{email}', email)}
+                    </p>
+
+                    <div className="space-y-3">
+                      <div>
+                        <label className="text-[10px] uppercase tracking-widest text-slate-400 mb-2 block">
+                          {t.codeLabel}
+                        </label>
+                        <input
+                          ref={codeInputRef}
+                          type="text"
+                          inputMode="numeric"
+                          autoComplete="one-time-code"
+                          pattern="[0-9]*"
+                          maxLength={6}
+                          value={code}
+                          onChange={(e) => handleCodeChange(e.target.value)}
+                          placeholder="000000"
+                          disabled={isVerifying}
+                          className="w-full px-4 py-4 rounded-lg bg-slate-800 text-white ring-1 ring-slate-700 focus:ring-2 focus:ring-blue-500 outline-none text-center text-3xl font-mono tracking-[0.5em] tabular-nums disabled:opacity-60"
+                        />
+                      </div>
+
+                      <button
+                        type="button"
+                        onClick={() => handleVerify()}
+                        disabled={code.length !== 6 || isVerifying}
+                        className="w-full mt-2 px-6 py-3 rounded-lg font-bold text-white bg-blue-600 hover:bg-blue-700 transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+                      >
+                        {isVerifying ? t.verifying : t.verify + ' →'}
+                      </button>
+
+                      {status === 'error' && (
+                        <p className="text-xs text-red-400 mt-2">{errorMsg}</p>
+                      )}
+
+                      <div className="flex items-center justify-between pt-2 text-xs">
+                        <button
+                          type="button"
+                          onClick={resetToEmail}
+                          className="text-slate-400 hover:text-white transition-colors"
+                        >
+                          ← {t.again}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={handleResend}
+                          disabled={isSending}
+                          className="text-blue-400 hover:text-blue-300 transition-colors disabled:opacity-40"
+                        >
+                          {isSending ? t.sending : t.resend}
+                        </button>
+                      </div>
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
             </div>
           </motion.div>
         )}
