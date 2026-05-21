@@ -7,7 +7,7 @@ import LanguageSwitcher from './components/LanguageSwitcher'
 import EventsHome from './components/EventsHome'
 import EventsList from './components/EventsList'
 import EventDetail from './components/EventDetail'
-import AuthModal from './components/AuthModal'
+import AccessGate from './components/AccessGate'
 import ProfileView from './components/ProfileView'
 import AdminPanel from './components/admin/AdminPanel'
 import ModelAdvisor from './tools/model-advisor/ModelAdvisor'
@@ -95,8 +95,6 @@ export default function App() {
   const [selectedEventId, setSelectedEventId] = useState(null)
   const [eventsMenuOpen, setEventsMenuOpen]   = useState(false)
   const [userMenuOpen, setUserMenuOpen]       = useState(false)
-  const [authModalOpen, setAuthModalOpen]     = useState(false)
-  const [authReason, setAuthReason]           = useState('module')
   const [activeFilter, setActiveFilter]       = useState('all')
   const lang = i18n.language.startsWith('es') ? 'es' : 'en'
   const eventsMenuRef = useRef(null)
@@ -140,10 +138,10 @@ export default function App() {
     setView('admin'); setUserMenuOpen(false); setEventsKind(null); setSelectedEventId(null)
   }
 
+  // The AccessGate guarantees that by the time we get here interactively
+  // there's always a session, so we no longer need to re-check `user` before
+  // entering a module.
   const startModule = (mod) => {
-    if (!user) {
-      setAuthReason('module'); setAuthModalOpen(true); return
-    }
     setActiveModule(mod)
   }
 
@@ -206,8 +204,8 @@ export default function App() {
 
         <LanguageSwitcher />
 
-        {/* Auth area */}
-        {!authLoading && (user ? (
+        {/* Auth area — always logged in past the gate */}
+        {!authLoading && user && (
           <div className="relative" ref={userMenuRef}>
             <button onClick={() => setUserMenuOpen((o) => !o)}
               className={`px-3 py-1 rounded-full text-sm font-medium transition-all flex items-center gap-1 ${
@@ -242,12 +240,7 @@ export default function App() {
               </div>
             )}
           </div>
-        ) : (
-          <button onClick={() => { setAuthReason('module'); setAuthModalOpen(true) }}
-            className="px-3 py-1 rounded-full text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 transition-all">
-            {lang === 'es' ? 'Iniciar sesión' : 'Sign in'}
-          </button>
-        ))}
+        )}
       </div>
     </nav>
   )
@@ -255,12 +248,14 @@ export default function App() {
   if (activeModule) {
     const modProgress = getModuleProgress(activeModule.id)
     return (
-      <ModulePlayer
-        module={activeModule}
-        initialSlide={modProgress.completed ? 0 : modProgress.currentSlide || 0}
-        onComplete={() => { completeModule(activeModule.id); setActiveModule(null) }}
-        onBack={() => setActiveModule(null)}
-      />
+      <AccessGate lang={lang}>
+        <ModulePlayer
+          module={activeModule}
+          initialSlide={modProgress.completed ? 0 : modProgress.currentSlide || 0}
+          onComplete={() => { completeModule(activeModule.id); setActiveModule(null) }}
+          onBack={() => setActiveModule(null)}
+        />
+      </AccessGate>
     )
   }
 
@@ -281,12 +276,13 @@ export default function App() {
   ) : null
 
   const wrap = (children, active) => (
-    <div className="min-h-screen bg-slate-900">
-      <NavBar active={active} />
-      <AuthModal open={authModalOpen} onClose={() => setAuthModalOpen(false)} lang={lang} reason={authReason} />
-      <IncompleteBanner />
-      {children}
-    </div>
+    <AccessGate lang={lang}>
+      <div className="min-h-screen bg-slate-900">
+        <NavBar active={active} />
+        <IncompleteBanner />
+        {children}
+      </div>
+    </AccessGate>
   )
 
   if (view === 'advisor')   return wrap(<ModelAdvisor onBack={() => setView('home')} />, 'advisor')
