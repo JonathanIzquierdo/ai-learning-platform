@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useState, useCallback } from 'react'
+import { createContext, useContext, useEffect, useState, useCallback, useRef } from 'react'
 import { supabase, isSupabaseReady, isAllowedEmail } from './supabase'
 
 const AuthContext = createContext(null)
@@ -8,6 +8,11 @@ export function AuthProvider({ children }) {
   const [profile, setProfile] = useState(null)
   const [loading, setLoading] = useState(true)
   const [isAdmin, setIsAdmin] = useState(false)
+  // Flips to true for ~4 seconds right after a SIGNED_IN event fires, so the
+  // AccessGate can play its confetti + un-blur reveal. The gate is responsible
+  // for resetting it via `clearJustSignedIn()` once the animation is done.
+  const [justSignedIn, setJustSignedIn] = useState(false)
+  const justSignedInTimer = useRef(null)
 
   // Bootstrap session on mount
   useEffect(() => {
@@ -21,11 +26,29 @@ export function AuthProvider({ children }) {
       setLoading(false)
     })
 
-    const { data: sub } = supabase.auth.onAuthStateChange((_event, newSession) => {
+    const { data: sub } = supabase.auth.onAuthStateChange((event, newSession) => {
       setSession(newSession ?? null)
+      if (event === 'SIGNED_IN') {
+        // Auto-clear after 4s as a safety net even if the gate forgets to.
+        setJustSignedIn(true)
+        if (justSignedInTimer.current) clearTimeout(justSignedInTimer.current)
+        justSignedInTimer.current = setTimeout(() => setJustSignedIn(false), 4000)
+      }
+      if (event === 'SIGNED_OUT') {
+        setJustSignedIn(false)
+        if (justSignedInTimer.current) clearTimeout(justSignedInTimer.current)
+      }
     })
 
-    return () => sub.subscription?.unsubscribe()
+    return () => {
+      sub.subscription?.unsubscribe()
+      if (justSignedInTimer.current) clearTimeout(justSignedInTimer.current)
+    }
+  }, [])
+
+  const clearJustSignedIn = useCallback(() => {
+    setJustSignedIn(false)
+    if (justSignedInTimer.current) clearTimeout(justSignedInTimer.current)
   }, [])
 
   // Load profile + admin flag whenever session changes
@@ -114,6 +137,7 @@ export function AuthProvider({ children }) {
     setSession(null)
     setProfile(null)
     setIsAdmin(false)
+    setJustSignedIn(false)
   }, [])
 
   const value = {
@@ -122,6 +146,8 @@ export function AuthProvider({ children }) {
     profile,
     isAdmin,
     loading,
+    justSignedIn,
+    clearJustSignedIn,
     signInWithMagicLink,
     updateProfile,
     signOut
