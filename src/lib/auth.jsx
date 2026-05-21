@@ -95,7 +95,14 @@ export function AuthProvider({ children }) {
     return () => { cancelled = true }
   }, [session])
 
-  const signInWithMagicLink = useCallback(async (email, metadata = {}) => {
+  // ──────────────────────────────────────────────────────────────────────
+  // OTP flow (6-digit code typed in the same tab).
+  // Step 1: requestOtpCode(email, metadata?) → Supabase emails a 6-digit code.
+  // Step 2: verifyOtpCode(email, code) → exchanges the code for a session.
+  // We do NOT pass `emailRedirectTo` so Supabase sends the OTP template that
+  // contains the {{ .Token }} variable instead of the magic-link template.
+  // ──────────────────────────────────────────────────────────────────────
+  const requestOtpCode = useCallback(async (email, metadata = {}) => {
     if (!isSupabaseReady()) {
       return { error: { message: 'Auth is not configured. Set Supabase env vars.' } }
     }
@@ -106,7 +113,9 @@ export function AuthProvider({ children }) {
     return supabase.auth.signInWithOtp({
       email: normalized,
       options: {
-        emailRedirectTo: window.location.origin,
+        // No emailRedirectTo → Supabase uses the OTP (token) template,
+        // not the magic-link template.
+        shouldCreateUser: true,
         data: {
           name: metadata.name || null,
           team: metadata.team || null
@@ -114,6 +123,25 @@ export function AuthProvider({ children }) {
       }
     })
   }, [])
+
+  const verifyOtpCode = useCallback(async (email, token) => {
+    if (!isSupabaseReady()) {
+      return { error: { message: 'Auth is not configured. Set Supabase env vars.' } }
+    }
+    const normalized = email.trim().toLowerCase()
+    const cleanToken = String(token || '').replace(/\D/g, '') // digits only
+    if (!cleanToken) {
+      return { error: { message: 'Empty verification code.' } }
+    }
+    return supabase.auth.verifyOtp({
+      email: normalized,
+      token: cleanToken,
+      type: 'email'
+    })
+  }, [])
+
+  // Backwards-compatible alias: legacy callers (AuthModal) used this name.
+  const signInWithMagicLink = requestOtpCode
 
   const updateProfile = useCallback(async (updates) => {
     if (!session?.user) return { error: { message: 'Not authenticated' } }
@@ -148,7 +176,9 @@ export function AuthProvider({ children }) {
     loading,
     justSignedIn,
     clearJustSignedIn,
-    signInWithMagicLink,
+    requestOtpCode,
+    verifyOtpCode,
+    signInWithMagicLink, // legacy alias
     updateProfile,
     signOut
   }
